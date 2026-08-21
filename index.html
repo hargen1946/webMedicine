@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>お薬手帳</title>
+    <!-- 無料のQRコード読み取りライブラリ -->
+    <script src="https://unpkg.com"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #FAF5FA;
+            color: #1A1A1A;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: bold;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        .subtitle {
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 30px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* 巨大で見やすいシニア向けボタン */
+        .btn {
+            width: 85%;
+            font-size: 26px;
+            font-weight: bold;
+            padding: 15px 20px;
+            border-radius: 50px;
+            margin: 15px 0;
+            cursor: pointer;
+            box-sizing: border-box;
+            text-align: center;
+            border: none;
+            display: block;
+        }
+
+        .btn-outline {
+            background-color: #FFFFFF;
+            border: 4px solid #6c5ce7;
+            color: #6c5ce7;
+        }
+
+        .btn-purple {
+            background-color: #6c5ce7;
+            color: #FFFFFF;
+        }
+
+        .btn-orange {
+            background-color: #e67e22;
+            color: #FFFFFF;
+        }
+
+        .btn-green {
+            background-color: #27ae60;
+            color: #FFFFFF;
+        }
+
+        /* ガイダンス・警告テキストの再現 */
+        .msg-success {
+            color: #27ae60;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .msg-error {
+            color: #c0392b;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 10px;
+            line-height: 1.5;
+        }
+
+        .info-text {
+            font-size: 22px;
+            margin: 15px 0;
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            background-color: #000;
+            margin: 10px 0;
+            border-radius: 10px;
+        }
+
+        /* お薬詳細表示の完全再現 */
+        .prescription-box {
+            width: 100%;
+            text-align: center;
+            background-color: #FFFFFF;
+            padding: 20px;
+            border-radius: 15px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        /* 記録一覧の枠（タップ可能なボタンにする） */
+        .record-item-btn {
+            width: 100%;
+            background-color: #FFFFFF;
+            border: none;
+            text-align: left;
+            padding: 20px;
+            border-bottom: 2px solid #E0E0E0;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .header-info {
+            font-size: 22px;
+            font-weight: bold;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #1A1A1A;
+            text-align: center;
+        }
+
+        .medicine-item {
+            border-top: 2px solid #E0E0E0;
+            padding: 20px 0;
+            text-align: left;
+        }
+
+        .med-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .med-detail {
+            font-size: 22px;
+            margin-left: 10px;
+            margin-top: 5px;
+            color: #333;
+        }
+
+        .screen { display: none; width: 100%; }
+        .active { display: flex; flex-direction: column; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- 1. ホーム画面 -->
+    <div id="screen-home" class="screen active">
+        <h1>お薬手帳</h1>
+        <button class="btn btn-outline" onclick="changeScreen('screen-records')">記録を見る</button>
+        <button class="btn btn-purple" onclick="startCamera()">QRコードを読み取る</button>
+        <!-- ホーム画面にエラー表示枠を追加 -->
+        <div id="home-error-msg" class="msg-error"></div>
+    </div>
+
+    <!-- 2. カメラ・読み取り中画面 -->
+    <div id="screen-scan" class="screen">
+        <div id="reader"></div>
+        <div id="scan-status" class="info-text"></div>
+        <div id="scan-msg" class="msg-error"></div>
+        <button id="btn-next-qr" class="btn btn-orange" style="display:none;" onclick="resumeCamera()">次のQRコードを読む</button>
+        <button id="btn-finish-scan" class="btn btn-green" style="display:none;" onclick="finishScanning()">読み取り終了</button>
+        <button class="btn btn-outline" style="margin-top:30px;" onclick="stopCameraAndGoHome()">ホームへ戻る</button>
+    </div>
+
+    <!-- 3. 今回のお薬 / お薬の記録（詳細画面） -->
+    <div id="screen-detail" class="screen">
+        <div id="detail-title" class="subtitle">今回のお薬</div>
+        <div class="prescription-box">
+            <div id="detail-header" class="header-info"></div>
+            <div id="detail-msg" class="msg-success"></div>
+            <div id="detail-medicines"></div>
+        </div>
+        <button id="btn-detail-back" class="btn btn-outline" onclick="changeScreen('screen-home')">ホームへ戻る</button>
+    </div>
+
+    <!-- 4. 記録を見る（一覧画面） -->
+    <div id="screen-records" class="screen">
+        <div class="subtitle" style="text-align: left; padding-left: 10px;">記録を見る</div>
+        <div id="saved-records-list" style="width:100%; background-color:#FFF; border-radius:15px; overflow:hidden;"></div>
+        <button class="btn btn-outline" style="margin-top:40px;" onclick="changeScreen('screen-home')">ホームへ戻る</button>
+    </div>
+
+</div>
+
+<script>
+    // Kotlinから移植したJahisParserロジック
+    const JahisParser = {
+        parsePrescription: function(qrData) {
+            const lines = this.rebuildLogicalLines(qrData);
+            let prescriptionDate = ""; let hospitalName = ""; let department = ""; let doctorName = "";
+            const medicineMap = {};
+
+            for (const line of lines) {
+                const parts = line.split(",").map(p => p.trim());
+                if (parts.length === 0 || !parts) continue;
+                const recordType = parts[0];
+
+                let medicineNumber = null;
+                if (["201", "301", "311"].includes(recordType)) {
+                    medicineNumber = parseInt(parts[1], 10);
+                    if (isNaN(medicineNumber)) continue;
+                    if (!medicineMap[medicineNumber]) {
+                        medicineMap[medicineNumber] = { name: "", usage: [], medicineQuantity: "", dispensingQuantity: "" };
+                    }
+                }
+
+                switch (recordType) {
+                    case "5": prescriptionDate = this.formatDate(parts[1] || ""); break;
+                    case "51": hospitalName = (parts[1] || "").trim(); break;
+                    case "55":
+                        doctorName = this.normalizeDisplayText((parts[1] || "").trim());
+                        department = this.normalizeDepartment((parts[2] || "").trim());
+                        break;
+                    case "201": {
+                        const detail = medicineMap[medicineNumber];
+                        const medicineName = (parts[2] || "").trim();
+                        if (medicineName.length > 0) detail.name = this.normalizeDisplayText(medicineName);
+                        const amount = this.normalizeNumber(parts[3] || "");
+                        const unit = (parts[4] || "").trim();
+                        if (amount.length > 0 && unit.length > 0) detail.medicineQuantity = amount + this.normalizeDisplayText(unit);
+                        break;
+                    }
+                    case "301": {
+                        const detail = medicineMap[medicineNumber];
+                        const mainUsage = this.normalizeDisplayText((parts[2] || "").trim());
+                        if (mainUsage.length > 0 && !detail.usage.includes(mainUsage)) detail.usage.push(mainUsage);
+                        const amount = this.normalizeNumber(parts[3] || "");
+                        const unit = (parts[4] || "").trim();
+                        if (amount.length > 0 && unit.length > 0) detail.dispensingQuantity = amount + this.normalizeDisplayText(unit);
+                        break;
+                    }
+                    case "311": {
+                        const detail = medicineMap[medicineNumber];
+                        const usageText = this.normalizeDisplayText((parts[2] || "").trim());
+                        if (usageText.length > 0 && !detail.usage.includes(usageText)) detail.usage.push(usageText);
+                        break;
+                    }
+                }
+            }
+
+            const sortedKeys = Object.keys(medicineMap).map(Number).sort((a, b) => a - b);
+            const medicines = [];
+            for (const key of sortedKeys) {
+                const detail = medicineMap[key];
+                if (detail.name.trim().length > 0) {
+                    medicines.push({ name: detail.name.trim(), usage: detail.usage, quantityInfo: this.chooseQuantity(detail) });
+                }
+            }
+            return { prescriptionDate, hospitalName, department, doctorName, medicines };
+        },
+        chooseQuantity: function(detail) {
+            if (detail.dispensingQuantity.endsWith("日分")) return detail.dispensingQuantity;
+            if (detail.medicineQuantity.trim().length > 0) return detail.medicineQuantity;
+            return detail.dispensingQuantity;
+        },
+        rebuildLogicalLines: function(qrData) {
+/html
