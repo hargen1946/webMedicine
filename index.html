@@ -25,10 +25,7 @@
       <strong>QRコードを読み取る</strong>
       <button id="close-scanner" class="icon-button" type="button" aria-label="閉じる">×</button>
     </div>
-    <div class="camera-frame">
-      <video id="camera-video" autoplay muted playsinline></video>
-      <div class="scan-guide" aria-hidden="true"></div>
-    </div>
+    <div id="qr-reader" class="camera-frame" aria-label="QRコード読み取りカメラ"></div>
     <p id="scanner-status" class="hint" aria-live="polite">カメラを起動しています…</p>
     <div class="scanner-actions">
       <label class="button secondary file-button">画像から読み取る<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
@@ -42,6 +39,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="app.js" defer></script>
 </body>
 </html>
