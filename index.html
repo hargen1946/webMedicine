@@ -7,7 +7,7 @@
   <meta name="description" content="QRコードから処方情報を記録できる、ブラウザ版お薬手帳">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
   <style>
     .camera-frame{height:min(52dvh,440px);min-height:280px;aspect-ratio:auto}
     .camera-frame video{width:100%!important;height:100%!important;min-height:0;object-fit:cover!important}
@@ -54,7 +54,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="jsQR.js?v=1.4.0"></script>
-  <script src="app.js?v=4" defer></script>
+  <script src="zxing-browser.min.js?v=0.2.1"></script>
+  <script src="app.js?v=5" defer></script>
 </body>
 </html>
