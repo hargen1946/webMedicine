@@ -15,6 +15,8 @@
     .scan-choice{display:grid;gap:10px;margin:4px 0 13px}
     #scanner-status{font-size:18px;font-weight:800;color:#333}
     .scan-count{color:#d40000}
+    .record-date{font-size:17px!important}
+    .record-doctor{margin-top:8px;color:#3f3944;font-size:16px;font-weight:800}
   </style>
   <title>お薬手帳</title>
 </head>
@@ -42,19 +44,12 @@
     <div id="scan-choice" class="scan-choice hidden">
       <button id="scanner-next" class="button orange" type="button">次のQRコードを読む</button>
       <button id="scanner-finish" class="button success" type="button">読み取り終了</button>
-    </div>
-    <div class="scanner-actions">
-      <button id="show-paste" class="button ghost" type="button">読み取りデータを貼り付ける</button>
-    </div>
-    <div id="paste-panel" class="paste-panel hidden">
-      <label for="qr-text">QRコードの文字データ</label>
-      <textarea id="qr-text" rows="7" placeholder="JAHISデータを貼り付けてください"></textarea>
-      <button id="add-qr-text" class="button primary" type="button">このデータを追加</button>
+      <button id="scanner-back" class="button secondary hidden" type="button">ホームへ戻る</button>
     </div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="zxing-browser.min.js?v=0.2.1"></script>
-  <script src="app.js?v=7" defer></script>
+  <script src="app.js?v=9" defer></script>
 </body>
 </html>
