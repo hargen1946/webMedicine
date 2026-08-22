@@ -1,284 +1,47 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>お薬手帳</title>
-    <!-- 無料のQRコード読み取りライブラリ -->
-    <script src="https://unpkg.com"></script>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #FAF5FA;
-            color: #1A1A1A;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 450px;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 36px;
-            font-weight: bold;
-            margin-top: 40px;
-            margin-bottom: 40px;
-        }
-
-        .subtitle {
-            font-size: 32px;
-            font-weight: bold;
-            margin-top: 10px;
-            margin-bottom: 30px;
-            width: 100%;
-            text-align: center;
-        }
-
-        /* 巨大で見やすいシニア向けボタン */
-        .btn {
-            width: 85%;
-            font-size: 26px;
-            font-weight: bold;
-            padding: 15px 20px;
-            border-radius: 50px;
-            margin: 15px 0;
-            cursor: pointer;
-            box-sizing: border-box;
-            text-align: center;
-            border: none;
-            display: block;
-        }
-
-        .btn-outline {
-            background-color: #FFFFFF;
-            border: 4px solid #6c5ce7;
-            color: #6c5ce7;
-        }
-
-        .btn-purple {
-            background-color: #6c5ce7;
-            color: #FFFFFF;
-        }
-
-        .btn-orange {
-            background-color: #e67e22;
-            color: #FFFFFF;
-        }
-
-        .btn-green {
-            background-color: #27ae60;
-            color: #FFFFFF;
-        }
-
-        /* ガイダンス・警告テキスト */
-        .msg-success {
-            color: #27ae60;
-            font-size: 24px;
-            font-weight: bold;
-            margin: 15px 0;
-        }
-
-        .msg-error {
-            color: #c0392b;
-            font-size: 24px;
-            font-weight: bold;
-            margin: 20px 10px;
-            line-height: 1.5;
-        }
-
-        .info-text {
-            font-size: 22px;
-            margin: 15px 0;
-        }
-
-        #reader {
-            width: 100%;
-            max-width: 400px;
-            background-color: #000;
-            margin: 10px 0;
-            border-radius: 10px;
-        }
-
-        /* お薬詳細表示 */
-        .prescription-box {
-            width: 100%;
-            text-align: center;
-            background-color: #FFFFFF;
-            padding: 20px;
-            border-radius: 15px;
-            box-sizing: border-box;
-            margin-bottom: 20px;
-        }
-
-        /* 記録一覧の枠 */
-        .record-item-btn {
-            width: 100%;
-            background-color: #FFFFFF;
-            border: none;
-            text-align: left;
-            padding: 20px;
-            border-bottom: 2px solid #E0E0E0;
-            cursor: pointer;
-            box-sizing: border-box;
-        }
-
-        .header-info {
-            font-size: 22px;
-            font-weight: bold;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            color: #1A1A1A;
-            text-align: center;
-        }
-
-        .medicine-item {
-            border-top: 2px solid #E0E0E0;
-            padding: 20px 0;
-            text-align: left;
-        }
-
-        .med-name {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 8px;
-            line-height: 1.4;
-        }
-
-        .med-detail {
-            font-size: 22px;
-            margin-left: 10px;
-            margin-top: 5px;
-            color: #333;
-        }
-
-        .screen { display: none; width: 100%; }
-        .active { display: flex; flex-direction: column; align-items: center; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6750a4">
+  <meta name="description" content="QRコードから処方情報を記録できる、ブラウザ版お薬手帳">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>お薬手帳</title>
 </head>
 <body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button id="back-button" class="icon-button hidden" type="button" aria-label="戻る">←</button>
+      <div class="brand"><span class="brand-mark">✚</span><span id="header-title">お薬手帳</span></div>
+      <button id="install-button" class="install-button hidden" type="button">インストール</button>
+    </header>
+    <main id="app" tabindex="-1"></main>
+  </div>
 
-<div class="container">
-
-    <!-- 1. ホーム画面 -->
-    <div id="screen-home" class="screen active">
-        <h1>お薬手帳</h1>
-        <button class="btn btn-outline" onclick="changeScreen('screen-records')">記録を見る</button>
-        <button class="btn btn-purple" onclick="startCamera()">QRコードを読み取る</button>
-        <div id="home-error-msg" class="msg-error"></div>
+  <dialog id="scanner-dialog" class="scanner-dialog">
+    <div class="scanner-head">
+      <strong>QRコードを読み取る</strong>
+      <button id="close-scanner" class="icon-button" type="button" aria-label="閉じる">×</button>
     </div>
-
-    <!-- 2. カメラ・読み取り中画面 -->
-    <div id="screen-scan" class="screen">
-        <div id="reader"></div>
-        <div id="scan-status" class="info-text"></div>
-        <div id="scan-msg" class="msg-error"></div>
-        <button id="btn-next-qr" class="btn btn-orange" style="display:none;" onclick="resumeCamera()">次のQRコードを読む</button>
-        <button id="btn-finish-scan" class="btn btn-green" style="display:none;" onclick="finishScanning()">読み取り終了</button>
-        <button class="btn btn-outline" style="margin-top:30px;" onclick="stopCameraAndGoHome()">ホームへ戻る</button>
+    <div class="camera-frame">
+      <video id="camera-video" autoplay muted playsinline></video>
+      <div class="scan-guide" aria-hidden="true"></div>
     </div>
-
-    <!-- 3. 今回のお薬 / お薬の記録（詳細画面） -->
-    <div id="screen-detail" class="screen">
-        <div id="detail-title" class="subtitle">今回のお薬</div>
-        <div class="prescription-box">
-            <div id="detail-header" class="header-info"></div>
-            <div id="detail-msg" class="msg-success"></div>
-            <div id="detail-medicines"></div>
-        </div>
-        <button id="btn-detail-back" class="btn btn-outline" onclick="changeScreen('screen-home')">ホームへ戻る</button>
+    <p id="scanner-status" class="hint" aria-live="polite">カメラを起動しています…</p>
+    <div class="scanner-actions">
+      <label class="button secondary file-button">画像から読み取る<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
+      <button id="show-paste" class="button ghost" type="button">読み取りデータを貼り付ける</button>
     </div>
-
-    <!-- 4. 記録を見る（一覧画面） -->
-    <div id="screen-records" class="screen">
-        <div class="subtitle" style="text-align: left; padding-left: 10px;">記録を見る</div>
-        <div id="saved-records-list" style="width:100%; background-color:#FFF; border-radius:15px; overflow:hidden;"></div>
-        <button class="btn btn-outline" style="margin-top:40px;" onclick="changeScreen('screen-home')">ホームへ戻る</button>
+    <div id="paste-panel" class="paste-panel hidden">
+      <label for="qr-text">QRコードの文字データ</label>
+      <textarea id="qr-text" rows="7" placeholder="JAHISデータを貼り付けてください"></textarea>
+      <button id="add-qr-text" class="button primary" type="button">このデータを追加</button>
     </div>
+  </dialog>
 
-</div>
-
-<script>
-    // バグを修正した確定版のJahisParser
-    const JahisParser = {
-        parsePrescription: function(qrData) {
-            const lines = this.rebuildLogicalLines(qrData);
-            let prescriptionDate = ""; let hospitalName = ""; let department = ""; let doctorName = "";
-            const medicineMap = {};
-
-            for (const line of lines) {
-                const parts = line.split(",").map(p => p.trim());
-                if (parts.length === 0 || !parts[0]) continue;
-                const recordType = parts[0]; // バグ修正：配列の最初の文字を取得
-
-                let medicineNumber = null;
-                if (["201", "301", "311"].includes(recordType)) {
-                    medicineNumber = parseInt(parts[1], 10); // バグ修正：RP番号を取得
-                    if (isNaN(medicineNumber)) continue;
-                    if (!medicineMap[medicineNumber]) {
-                        medicineMap[medicineNumber] = { name: "", usage: [], medicineQuantity: "", dispensingQuantity: "" };
-                    }
-                }
-
-                switch (recordType) {
-                    case "5": prescriptionDate = this.formatDate(parts[1] || ""); break;
-                    case "51": hospitalName = (parts[1] || "").trim(); break;
-                    case "55":
-                        doctorName = this.normalizeDisplayText((parts[1] || "").trim());
-                        department = this.normalizeDepartment((parts[2] || "").trim());
-                        break;
-                    case "201": {
-                        const detail = medicineMap[medicineNumber];
-                        const medicineName = (parts[2] || "").trim();
-                        if (medicineName.length > 0) detail.name = this.normalizeDisplayText(medicineName);
-                        const amount = this.normalizeNumber(parts[3] || "");
-                        const unit = (parts[4] || "").trim();
-                        if (amount.length > 0 && unit.length > 0) detail.medicineQuantity = amount + this.normalizeDisplayText(unit);
-                        break;
-                    }
-                    case "301": {
-                        const detail = medicineMap[medicineNumber];
-                        const mainUsage = this.normalizeDisplayText((parts[2] || "").trim());
-                        if (mainUsage.length > 0 && !detail.usage.includes(mainUsage)) detail.usage.push(mainUsage);
-                        const amount = this.normalizeNumber(parts[3] || "");
-                        const unit = (parts[4] || "").trim();
-                        if (amount.length > 0 && unit.length > 0) detail.dispensingQuantity = amount + this.normalizeDisplayText(unit);
-                        break;
-                    }
-                    case "311": {
-                        const detail = medicineMap[medicineNumber];
-                        const usageText = this.normalizeDisplayText((parts[2] || "").trim());
-                        if (usageText.length > 0 && !detail.usage.includes(usageText)) detail.usage.push(usageText);
-                        break;
-                    }
-                }
-            }
-
-            const sortedKeys = Object.keys(medicineMap).map(Number).sort((a, b) => a - b);
-            const medicines = [];
-            for (const key of sortedKeys) {
-                const detail = medicineMap[key];
-                if (detail.name.trim().length > 0) {
-                    medicines.push({ name: detail.name.trim(), usage: detail.usage, quantityInfo: this.chooseQuantity(detail) });
-                }
-            }
-            return { prescriptionDate, hospitalName, department, doctorName, medicines };
-        },
-        chooseQuantity: function(detail) {
-            if (detail.dispensingQuantity.endsWith("日分")) return detail.dispensingQuantity;
-            if (detail.medicineQuantity.trim().length > 0) return detail.medicineQuantity;
-            return detail.dispensingQuantity;
-        },
-コードは注意してご使用ください。rebuildLogicalLines: function(qrData) {if (!qrData || qrData.trim().length === 0) return [];const physicalLines = qrData.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").map(l => l.trim()).filter(l => l.length > 0);const logicalLines = [];for (const line of physicalLines) {if (/^\d+/.test(line)) { logicalLines.push(line); }else if (logicalLines.length > 0) { logicalLines[logicalLines.length - 1] += line; }else { logicalLines.push(line); }}return logicalLines;},normalizeDisplayText: function(text) {if (!text) return "";return text.replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/　/g, " ");},normalizeDepartment: function(text) { return this.normalizeDisplayText(text); },normalizeNumber: function(text) { return this.normalizeDisplayText(text).replace(/[^0-9.]/g, ""); },formatDate: function(text) {const raw = text.replace(/[^0-9]/g, "");if (raw.length === 8) return raw.substring(0, 4) + "年" + raw.substring(4, 6) + "月" + raw.substring(6, 8) + "日";return text;}};let html5QrcodeScanner = null;let readQrCount = 0;let combinedQrData = "";let readHistory = [];function changeScreen(screenId) {document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));document.getElementById(screenId).classList.add('active');if (screenId === 'screen-home') {document.getElementById('home-error-msg').innerHTML = "";}if (screenId === 'screen-records') showSavedRecords();}function startCamera() {document.getElementById('home-error-msg').innerHTML = "";changeScreen('screen-scan');readQrCount = 0;combinedQrData = "";readHistory = [];document.getElementById('scan-status').innerHTML = "";document.getElementById('scan-msg').innerHTML = "";document.getElementById('btn-next-qr').style.display = 'none';document.getElementById('btn-finish-scan').style.display = 'none';html5QrcodeScanner = new Html5Qrcode("reader");html5QrcodeScanner.start({ facingMode: "environment" },{ fps: 10, qrbox: { width: 250, height: 250 } },onScanSuccess).catch(err => {document.getElementById('scan-msg').innerHTML = "カメラの起動に失敗しました。ブラウザのカメラ許可を確認してください。";});}function onScanSuccess(decodedText) {if (readHistory.includes(decodedText)) {document.getElementById('scan-msg').innerHTML = "このQRコードは、すでに読み取っています";return;}const parts = decodedText.split(",");if (readQrCount === 0 && parts[0] !== "1" && parts[0] !== "2" && parts[0] !== "5" && parts[0] !== "51") {html5QrcodeScanner.stop().then(() => {changeScreen('screen-home');document.getElementById('home-error-msg').innerHTML = "最初に、病院名が入っているQRコードを読み取ってください";});return;}if (parts.length < 2) {document.getElementById('scan-msg').innerHTML = "QRコードを読む順番が違います。はじめからやり直してください。";return;}readHistory.push(decodedText);readQrCount++;combinedQrData += decodedText + "\n";html5QrcodeScanner.pause();document.getElementById('scan-msg').innerHTML = "";document.getElementById('scan-status').innerHTML = ✓ QRコードを${readQrCount}枚読み取りました;document.getElementById('btn-next-qr').style.display = 'inline-block';document.getElementById('btn-finish-scan').style.display = 'inline-block';}function resumeCamera() {document.getElementById('btn-next-qr').style.display = 'none';document.getElementById('btn-finish-scan').style.display = 'none';document.getElementById('scan-msg').innerHTML = "";html5QrcodeScanner.resume();}function finishScanning() {html5QrcodeScanner.stop().then(() => {const result = JahisParser.parsePrescription(combinedQrData);const savedData = JSON.parse(localStorage.getItem('med_records') || '[]');savedData.unshift(result);localStorage.setItem('med_records', JSON.stringify(savedData));showDetailView(result, QRコード${readQrCount}枚から読み取りました<br>記録に保存しました, "今回のお薬", "screen-home");});}function showDetailView(result, messageText, titleText, backScreenId) {document.getElementById('detail-title').innerText = titleText;let doctorInfo = result.doctorName ? 内科 &nbsp; ${result.doctorName} 先生 : "";if(result.department) {doctorInfo = ${result.department} &nbsp; ${result.doctorName} 先生;}document.getElementById('detail-header').innerHTML = ${result.prescriptionDate} &nbsp; ${result.hospitalName}<br> ${doctorInfo};document.getElementById('detail-msg').innerHTML = messageText;let medHtml = "";result.medicines.forEach(med => {let usageHtml = med.usage.map(u => <div>${u}</div>).join('');medHtml += <div class="medicine-item"> <div class="med-name">${med.name}</div> <div class="med-detail">${usageHtml}</div> <div class="med-detail" style="font-weight:bold; margin-top:10px;">${med.quantityInfo}</div> </div>;});document.getElementById('detail-medicines').innerHTML = medHtml;const backBtn = document.getElementById('btn-detail-back');if (backScreenId === "screen-records") {backBtn.innerText = "記録一覧へ戻る";backBtn.onclick = function() { changeScreen('screen-records'); };} else {backBtn.innerText = "ホームへ戻る";backBtn.onclick = function() { changeScreen('screen-home'); };}changeScreen('screen-detail');}function showSavedRecords() {const savedData = JSON.parse(localStorage.getItem('med_records') || '[]');const listDiv = document.getElementById('saved-records-list');if (savedData.length === 0) {listDiv.innerHTML = 'まだ記録がありません';return;}let html = "";savedData.forEach((res, index) => {html += <button class="record-item-btn" onclick="openSavedDetail(${index})"> <div style="font-size:24px; font-weight:bold; line-height:1.5;"> ${res.prescriptionDate}<br>${res.hospitalName} </div> </button>;});listDiv.innerHTML = html;}function openSavedDetail(index) {const savedData = JSON.parse(localStorage.getItem('med_records') || '[]');const result = savedData[index];showDetailView(result, "", "お薬の記録", "screen-records");}function stopCameraAndGoHome() {if (html5QrcodeScanner) {html5QrcodeScanner.stop().then(() => { changeScreen('screen-home'); }).catch(() => changeScreen('screen-home'));} else {changeScreen('screen-home');}}
-/html
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>

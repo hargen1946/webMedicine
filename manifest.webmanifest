@@ -1,0 +1,1 @@
+{"name":"お薬手帳","short_name":"お薬手帳","description":"QRコードから処方情報を記録できるお薬手帳","lang":"ja","start_url":"./","display":"standalone","background_color":"#f7f5fa","theme_color":"#6750a4","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
