@@ -7,7 +7,14 @@
   <meta name="description" content="QRコードから処方情報を記録できる、ブラウザ版お薬手帳">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=4">
+  <style>
+    .camera-frame{height:min(52dvh,440px);min-height:280px;aspect-ratio:auto}
+    .camera-frame video{width:100%!important;height:100%!important;min-height:0;object-fit:cover!important}
+    .scan-guide{position:absolute;width:78%;aspect-ratio:1;left:11%;top:50%;translate:0 -50%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 999px #0005;pointer-events:none}
+    .scan-choice{display:grid;gap:10px;margin:4px 0 13px}
+    #scanner-status{font-size:18px;font-weight:800;color:#333}
+  </style>
   <title>お薬手帳</title>
 </head>
 <body>
@@ -25,8 +32,16 @@
       <strong>QRコードを読み取る</strong>
       <button id="close-scanner" class="icon-button" type="button" aria-label="閉じる">×</button>
     </div>
-    <div id="qr-reader" class="camera-frame" aria-label="QRコード読み取りカメラ"></div>
+    <div id="qr-reader" class="camera-frame" aria-label="QRコード読み取りカメラ">
+      <video id="camera-video" autoplay muted playsinline></video>
+      <canvas id="scan-canvas" hidden></canvas>
+      <div class="scan-guide" aria-hidden="true"></div>
+    </div>
     <p id="scanner-status" class="hint" aria-live="polite">カメラを起動しています…</p>
+    <div id="scan-choice" class="scan-choice hidden">
+      <button id="scanner-next" class="button orange" type="button">次のQRコードを読む</button>
+      <button id="scanner-finish" class="button success" type="button">読み取り終了</button>
+    </div>
     <div class="scanner-actions">
       <label class="button secondary file-button">画像から読み取る<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
       <button id="show-paste" class="button ghost" type="button">読み取りデータを貼り付ける</button>
@@ -39,7 +54,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="app.js" defer></script>
+  <script src="jsQR.js?v=1.4.0"></script>
+  <script src="app.js?v=4" defer></script>
 </body>
 </html>
