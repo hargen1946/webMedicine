@@ -7,13 +7,14 @@
   <meta name="description" content="QRコードから処方情報を記録できる、ブラウザ版お薬手帳">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
   <style>
     .camera-frame{height:min(52dvh,440px);min-height:280px;aspect-ratio:auto}
     .camera-frame video{width:100%!important;height:100%!important;min-height:0;object-fit:cover!important}
     .scan-guide{position:absolute;width:78%;aspect-ratio:1;left:11%;top:50%;translate:0 -50%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 999px #0005;pointer-events:none}
     .scan-choice{display:grid;gap:10px;margin:4px 0 13px}
     #scanner-status{font-size:18px;font-weight:800;color:#333}
+    .scan-count{color:#d40000}
   </style>
   <title>お薬手帳</title>
 </head>
@@ -43,7 +44,6 @@
       <button id="scanner-finish" class="button success" type="button">読み取り終了</button>
     </div>
     <div class="scanner-actions">
-      <label class="button secondary file-button">画像から読み取る<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
       <button id="show-paste" class="button ghost" type="button">読み取りデータを貼り付ける</button>
     </div>
     <div id="paste-panel" class="paste-panel hidden">
@@ -55,6 +55,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="zxing-browser.min.js?v=0.2.1"></script>
-  <script src="app.js?v=5" defer></script>
+  <script src="app.js?v=6" defer></script>
 </body>
 </html>
