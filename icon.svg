@@ -1,1 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#6750a4"/><rect x="112" y="92" width="288" height="328" rx="38" fill="#fff"/><rect x="184" y="58" width="144" height="76" rx="24" fill="#d8c9f5"/><path d="M256 177v126M193 240h126" stroke="#6750a4" stroke-width="34" stroke-linecap="round"/><path d="M170 353h172" stroke="#c9c0d4" stroke-width="24" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="薬">
+  <circle cx="256" cy="256" r="232" fill="#2e7d32"/>
+  <text x="256" y="375" text-anchor="middle" fill="#fff" font-family="HGMaruGothicMPRO, Hiragino Maru Gothic ProN, sans-serif" font-size="320" font-weight="400">薬</text>
+</svg>

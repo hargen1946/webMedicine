@@ -1,5 +1,5 @@
-const CACHE='medicine-notebook-v19';
-const ASSETS=['./','index.html','styles.css?v=6','help.css?v=1','app.js?v=19','zxing-browser.min.js?v=0.2.1','manifest.webmanifest','icon.svg'];
+const CACHE='medicine-notebook-v20';
+const ASSETS=['./','index.html','styles.css?v=6','help.css?v=1','app.js?v=20','zxing-browser.min.js?v=0.2.1','manifest.webmanifest?v=2','icon.svg?v=2','icon-192.png?v=1','icon-512.png?v=1','icon-maskable-512.png?v=1'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
