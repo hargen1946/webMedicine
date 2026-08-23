@@ -1,0 +1,51 @@
+.help-link {
+  display: block;
+  margin: 18px auto 0;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--purple);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.help-sections {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.help-sections section {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.help-sections h2 {
+  margin: 0 0 9px;
+  color: var(--purple-dark);
+  font-size: 20px;
+}
+
+.help-sections p {
+  margin: 7px 0;
+  line-height: 1.7;
+}
+
+.help-sections ol {
+  margin: 10px 0 0;
+  padding-left: 1.5em;
+}
+
+.help-sections li {
+  margin: 7px 0;
+  line-height: 1.6;
+}
+
+.help-note {
+  font-weight: 700;
+}
