@@ -25,6 +25,13 @@
     .home-actions .button{min-height:62px;font-size:21px}
     .home-actions [data-action="history"]{position:relative;top:28px}
     .home-actions [data-action="scan"]{margin-top:36px}
+    .install-button{font-size:14px;white-space:nowrap}
+    .install-guide-dialog{width:min(calc(100% - 28px),520px);border:0;border-radius:24px;padding:26px 22px;background:#fff;color:#28252d}
+    .install-guide-dialog::backdrop{background:#1c1625b8}
+    .install-guide-dialog h2{margin:0 0 20px;text-align:center;font-size:25px}
+    .install-guide-dialog p{margin:0;font-size:18px;font-weight:700;line-height:2}
+    .install-guide-actions{display:grid;gap:12px;margin-top:24px}
+    .install-guide-actions .button{font-size:20px}
   </style>
   <title>お薬手帳</title>
 </head>
@@ -33,7 +40,7 @@
     <header class="topbar">
       <button id="back-button" class="icon-button hidden" type="button" aria-label="戻る">←</button>
       <div class="brand"><span id="header-title">お 薬 手 帳</span></div>
-      <button id="install-button" class="install-button hidden" type="button">ホーム画面に追加</button>
+      <button id="install-button" class="install-button hidden" type="button">ホームにアイコンを置く</button>
     </header>
     <main id="app" tabindex="-1"></main>
   </div>
@@ -56,8 +63,21 @@
     </div>
   </dialog>
 
+  <dialog id="install-guide-dialog" class="install-guide-dialog">
+    <h2>ホームにアイコンを置く</h2>
+    <p>
+      次の画面では、右下の青い「インストール」を押してください。<br>
+      これは、ホーム画面にアイコンを置くという意味です。<br>
+      置きたくない場合は「キャンセル」を押してください。
+    </p>
+    <div class="install-guide-actions">
+      <button id="install-guide-next" class="button primary" type="button">次へ</button>
+      <button id="install-guide-back" class="button secondary" type="button">戻る</button>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="zxing-browser.min.js?v=0.2.1"></script>
-  <script src="app.js?v=20" defer></script>
+  <script src="app.js?v=21" defer></script>
 </body>
 </html>
