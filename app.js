@@ -57,7 +57,7 @@ function saveRecord(record){
   return true;
 }
 
-function flash(message){toast.textContent=message;toast.classList.add('show');clearTimeout(flash.timer);flash.timer=setTimeout(()=>toast.classList.remove('show'),2600)}
+function flash(message){toast.textContent=message;toast.classList.add('show');clearTimeout(flash.timer);flash.timer=setTimeout(()=>toast.classList.remove('show'),3000)}
 function navigate(view,selected=null){state.view=view;state.selected=selected;render();app.focus();scrollTo({top:0,behavior:'smooth'})}
 function render(){backButton.classList.toggle('hidden',state.view==='home');headerTitle.textContent=state.view==='home'?'お 薬 手 帳':state.view==='history'?'記録一覧':state.view==='help'?'使い方':'お薬の記録';if(state.view==='home')renderHome();else if(state.view==='history')renderHistory();else if(state.view==='help')renderHelp();else renderDetail(state.selected)}
 
@@ -164,7 +164,6 @@ async function startCamera(){
 }
 function zxingFingerprint(result){try{const bytes=result.getRawBytes?.();if(!bytes?.length)return'';let hash=2166136261;for(const byte of bytes){hash^=byte;hash=Math.imul(hash,16777619)}return`raw:${bytes.length}:${hash>>>0}`}catch{return''}}
 
-// 【修正箇所】コピー＆ペーストでもエラーにならないように書き直しました
 function decodeZxingResult(result){
   const text = result.getText?.() || String(result.text || '');
   try {
@@ -208,6 +207,7 @@ async function finishReading(){if(!state.qrList.length)return;const record=parse
 
 function csvCell(v){return'"'+String(v??'').replaceAll('"','""')+'"'}
 
+// 【変更】安全に共有を呼び出し、ダメならダウンロードしてメッセージを表示
 async function exportCsv(){
   const records=getRecords();
   if(!records.length){flash('出力する記録がありません');return}
@@ -215,23 +215,23 @@ async function exportCsv(){
   for(const r of records)for(const m of r.medicines)rows.push([r.prescriptionDate,r.hospitalName,r.department,r.doctorName,m.name,m.usage.join(' / '),m.quantityInfo]);
   
   const csvContent = '\ufeff'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
-  const file = new File([csvContent], 'お薬手帳.csv', { type: 'text/csv;charset=utf-8' });
   
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
+  try {
+    const file = new File([csvContent], 'お薬手帳.csv', { type: 'text/csv;charset=utf-8' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         title: 'お薬手帳データ',
-        text: 'お薬手帳のCSVデータです。パソコンなどで開いてください。',
         files: [file]
       });
       return;
-    } catch (e) {
-      console.log('共有キャンセル', e);
-      return;
     }
+  } catch (e) {
+    console.log('共有機能が利用できません:', e);
   }
   
+  // スマホの共有機能が使えなかった場合は、直接ダウンロードしてメッセージを表示
   download(csvContent,'お薬手帳.csv','text/csv;charset=utf-8');
+  flash('保存しました。本体のダウンロードフォルダをご確認ください。');
 }
 
 function download(content,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
