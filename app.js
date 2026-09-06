@@ -20,7 +20,32 @@ function rememberQrFingerprints(fingerprints){const history=new Set(getQrHistory
 function rebuildQrHistory(records){const fingerprints=records.flatMap(r=>Array.isArray(r.qrFingerprints)?r.qrFingerprints:[]).filter(Boolean);if(fingerprints.length)localStorage.setItem(QR_HISTORY_KEY,JSON.stringify([...new Set(fingerprints)].slice(-1000)));else localStorage.removeItem(QR_HISTORY_KEY)}
 function norm(s){return String(s||'').replace(/\s+/g,'').trim()}
 function score(r){return(r.prescriptionDate?10:0)+(r.hospitalName?10:0)+(r.department?3:0)+(r.doctorName?3:0)+r.medicines.length*20+r.medicines.reduce((n,m)=>n+(m.name?5:0)+m.usage.filter(Boolean).length*2+(m.quantityInfo?3:0),0)}
-function saveRecord(record){const records=getRecords();const i=records.findIndex(r=>norm(r.prescriptionDate)===norm(record.prescriptionDate)&&norm(r.hospitalName)===norm(record.hospitalName));if(i>=0){if(score(record)<=score(records[i]))return false;records[i]=record}else records.unshift(record);writeRecords(records);return true}
+
+// ★改良ポイント1：保存時に日付順に並べ替える
+function saveRecord(record){
+  const records=getRecords();
+  const i=records.findIndex(r=>norm(r.prescriptionDate)===norm(record.prescriptionDate)&&norm(r.hospitalName)===norm(record.hospitalName));
+  if(i>=0){
+    if(score(record)<=score(records[i]))return false;
+    records[i]=record;
+  }else{
+    records.unshift(record);
+  }
+  
+  // 処方日（日付）が新しい順に並べ替える処理
+  records.sort((a, b) => {
+    const getNum = (d) => {
+      if (!d) return 0;
+      const m = d.match(/(\d+)年(\d+)月(\d+)日/);
+      return m ? Number(m[1].padStart(4,'0') + m[2].padStart(2,'0') + m[3].padStart(2,'0')) : 0;
+    };
+    return getNum(b.prescriptionDate) - getNum(a.prescriptionDate);
+  });
+  
+  writeRecords(records);
+  return true;
+}
+
 function flash(message){toast.textContent=message;toast.classList.add('show');clearTimeout(flash.timer);flash.timer=setTimeout(()=>toast.classList.remove('show'),2600)}
 function navigate(view,selected=null){state.view=view;state.selected=selected;render();app.focus();scrollTo({top:0,behavior:'smooth'})}
 function render(){backButton.classList.toggle('hidden',state.view==='home');headerTitle.textContent=state.view==='home'?'お 薬 手 帳':state.view==='history'?'記録一覧':state.view==='help'?'使い方':'お薬の記録';if(state.view==='home')renderHome();else if(state.view==='history')renderHistory();else if(state.view==='help')renderHelp();else renderDetail(state.selected)}
@@ -34,20 +59,61 @@ function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').sp
 function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
 function matchesStoredQr(data,fingerprints=[]){const records=getRecords();if(records.some(record=>Array.isArray(record.qrFingerprints)&&fingerprints.some(f=>record.qrFingerprints.includes(f))))return true;const incoming=parsePrescription(data);if(incoming.prescriptionDate&&incoming.hospitalName)return records.some(record=>norm(record.prescriptionDate)===norm(incoming.prescriptionDate)&&norm(record.hospitalName)===norm(incoming.hospitalName));const medicineNames=incoming.medicines.map(m=>norm(m.name)).filter(Boolean);return medicineNames.length>0&&records.some(record=>medicineNames.every(name=>record.medicines.some(m=>norm(m.name)===name)))}
 function addQrData(raw,sourceFingerprint=''){const data=normalizeQrData(raw);if(!data)return'EMPTY';const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';if(!state.qrList.length&&storedMatch)return'PREVIOUS';state.qrList.push(data);state.qrFingerprints.push(...fingerprints);state.notice='';return'ADDED'}
-async function acceptQr(raw,sourceFingerprint=''){const result=addQrData(raw,sourceFingerprint);await stopCamera();if(result==='ADDED'){statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;showScanChoice(true)}else if(result==='MISSING'){statusText.textContent='QRコードの順番が違います。病院名を含む1枚目からやり直してください。';showScanChoice(false)}else if(result==='DUPLICATE'){statusText.textContent='同じQRコードです。件数には追加していません。';showScanChoice(true)}else if(result==='PREVIOUS'){statusText.textContent='このQRコードは以前に読み取り済みです。';showScanChoice(state.qrList.length>0)}else{statusText.textContent='読み取りデータが空です。';showScanChoice(false)}}
+
+// ★改良ポイント2：注意文を赤くする
+async function acceptQr(raw,sourceFingerprint=''){
+  const result=addQrData(raw,sourceFingerprint);
+  await stopCamera();
+  
+  statusText.style.color = '#333'; // まずは通常の色に戻す
+  
+  if(result==='ADDED'){
+    statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
+    showScanChoice(true);
+  }else if(result==='MISSING'){
+    statusText.style.color = '#d40000'; // 赤色にする
+    statusText.textContent='QRコードの順番が違います。病院名を含む1枚目からやり直してください。';
+    showScanChoice(false);
+  }else if(result==='DUPLICATE'){
+    statusText.style.color = '#d40000'; // 赤色にする
+    statusText.textContent='同じQRコードです。件数には追加していません。';
+    showScanChoice(true);
+  }else if(result==='PREVIOUS'){
+    statusText.style.color = '#d40000'; // 赤色にする
+    statusText.textContent='このQRコードは以前に読み取り済みです。';
+    showScanChoice(state.qrList.length>0);
+  }else{
+    statusText.style.color = '#d40000'; // 赤色にする
+    statusText.textContent='読み取りデータが空です。';
+    showScanChoice(false);
+  }
+}
 
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
-async function openScanner(){if(!dialog.open)dialog.showModal();hideScanChoice();statusText.textContent=state.qrList.length?'次のQRコードをカメラに映してください':'QRコードをカメラに映してください';if(typeof ZXingBrowser==='undefined'){statusText.textContent='ZXing読取機能を読み込めませんでした。画面を再読み込みしてください。';return}await startCamera()}
+
+// ★改良ポイント2：カメラ起動時に色を戻す
+async function openScanner(){
+  if(!dialog.open)dialog.showModal();
+  hideScanChoice();
+  
+  statusText.style.color = '#333'; // 通常の色に戻す
+  statusText.textContent=state.qrList.length?'次のQRコードをカメラに映してください':'QRコードをカメラに映してください';
+  
+  if(typeof ZXingBrowser==='undefined'){
+    statusText.style.color = '#d40000'; // 赤色にする
+    statusText.textContent='ZXing読取機能を読み込めませんでした。画面を再読み込みしてください。';
+    return;
+  }
+  await startCamera();
+}
+
 async function startCamera(){
   await stopCamera();
   try{
     const hints=new Map([[3,true],[4,'Shift_JIS']]);
     state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
-    
-    // 【変更点】解像度を少し下げて処理を軽くし、明るさ調整を促します
     const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280,min:720},height:{ideal:720,min:480}},audio:false};
-    
     state.scanning=true;
     state.controls=await state.reader.decodeFromConstraints(constraints,video,(result)=>{if(!result||!state.scanning)return;state.scanning=false;acceptQr(decodeZxingResult(result),zxingFingerprint(result))});
     state.stream=video.srcObject;
@@ -55,11 +121,8 @@ async function startCamera(){
     try{
       const caps=track?.getCapabilities?.()||{},advanced={};
       if(Array.isArray(caps.focusMode)&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
-      
-      // 【変更点】明るさ（露出）と色合いの自動調整をオンにします
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
-      
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
     if(state.scanning)state.scanTimer=setTimeout(handleScanTimeout,SCAN_TIMEOUT_MS)
@@ -71,7 +134,24 @@ async function startCamera(){
 function zxingFingerprint(result){try{const bytes=result.getRawBytes?.();if(!bytes?.length)return'';let hash=2166136261;for(const byte of bytes){hash^=byte;hash=Math.imul(hash,16777619)}return`raw:${bytes.length}:${hash>>>0}`}catch{return''}}
 function decodeZxingResult(result){const text=result.getText?.()||String(result.text||'');try{const bytes=result.getRawBytes?.();if(!bytes?.length)return text;const sjis=new TextDecoder('shift_jis').decode(new Uint8Array(bytes)),quality=value=>((value.match(/[ぁ-んァ-ヶ一-龠]/g)||[]).length*2)-((value.match(//g)||[]).length*12)+((value.match(/(^|\n)(5|51|55|201|301|311),/g)||[]).length*5);return quality(sjis)>quality(text)?sjis:text}catch{return text}}
 function clearScanTimers(){clearTimeout(state.scanTimer);clearTimeout(state.returnTimer);state.scanTimer=null;state.returnTimer=null}
-async function handleScanTimeout(){if(!state.scanning)return;state.scanTimer=null;await stopCamera();hideScanChoice();statusText.textContent='読み取れません。ホームに戻ります。';state.returnTimer=setTimeout(async()=>{state.returnTimer=null;await closeScanner();navigate('home')},SCAN_RETURN_DELAY_MS)}
+
+// ★改良ポイント2：タイムアウト時も赤くする
+async function handleScanTimeout(){
+  if(!state.scanning)return;
+  state.scanTimer=null;
+  await stopCamera();
+  hideScanChoice();
+  
+  statusText.style.color = '#d40000'; // 赤色にする
+  statusText.textContent='読み取れません。ホームに戻ります。';
+  
+  state.returnTimer=setTimeout(async()=>{
+    state.returnTimer=null;
+    await closeScanner();
+    navigate('home')
+  },SCAN_RETURN_DELAY_MS)
+}
+
 async function stopCamera(){clearScanTimers();state.scanning=false;try{state.controls?.stop()}catch{}state.controls=null;state.stream?.getTracks?.().forEach(track=>track.stop());state.stream=null;if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}}
 async function closeScanner(){await stopCamera();if(dialog.open)dialog.close()}
 function parsePrescription(data){const lines=rebuildLines(data);let prescriptionDate='',hospitalName='',department='',doctorName='';const map=new Map();const get=n=>{if(!map.has(n))map.set(n,{name:'',usage:[],medicineQuantity:'',dispensingQuantity:''});return map.get(n)};for(const line of lines){const p=line.split(',').map(x=>x.trim());if(p[0]==='5')prescriptionDate=formatDate(p[1]||'');else if(p[0]==='51')hospitalName=p[1]||'';else if(p[0]==='55'){doctorName=display(p[1]||'');department=display((p[2]||'').replace(/^【|】$/g,''))}else if(p[0]==='201'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n);if(p[2])d.name=display(p[2]);if(p[3]&&p[4])d.medicineQuantity=number(p[3])+display(p[4])}else if(p[0]==='301'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u);if(p[3]&&p[4])d.dispensingQuantity=number(p[3])+display(p[4])}else if(p[0]==='311'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u)}}const medicines=[...map.entries()].sort((a,b)=>a[0]-b[0]).map(([,d])=>({name:d.name.trim(),usage:d.usage,quantityInfo:d.dispensingQuantity.endsWith('日分')?d.dispensingQuantity:(d.medicineQuantity||d.dispensingQuantity)})).filter(m=>m.name);return{prescriptionDate,hospitalName,department,doctorName,medicines}}
