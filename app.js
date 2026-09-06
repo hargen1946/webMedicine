@@ -57,15 +57,14 @@ function saveRecord(record){
   return true;
 }
 
-// 【変更】メッセージの表示時間を5000ミリ秒（5秒）に延ばしました
 function flash(message){toast.textContent=message;toast.classList.add('show');clearTimeout(flash.timer);flash.timer=setTimeout(()=>toast.classList.remove('show'),5000)}
 function navigate(view,selected=null){state.view=view;state.selected=selected;render();app.focus();scrollTo({top:0,behavior:'smooth'})}
 function render(){backButton.classList.toggle('hidden',state.view==='home');headerTitle.textContent=state.view==='home'?'お 薬 手 帳':state.view==='history'?'記録一覧':state.view==='help'?'使い方':'お薬の記録';if(state.view==='home')renderHome();else if(state.view==='history')renderHistory();else if(state.view==='help')renderHelp();else renderDetail(state.selected)}
 
+// 【変更】3つのボタンの名前を短くシンプルにしました
 function renderHome(){
   const count=state.qrList.length;
-  // 【変更】ボタン名を「CSVファイルとして保存」に変更しました
-  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、保存します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤ 記 録 を 見 る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦ ${count?'次のQRコードを読む':'QRコードを読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row"><button class="button ghost" data-action="export">CSVファイルとして保存</button><button class="button ghost" data-action="backup">機種変更用のデータ出力</button><label class="button ghost file-button">データの復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
+  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、保存します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤ 記 録 を 見 る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦ ${count?'次のQRコードを読む':'QRコードを読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row"><button class="button ghost" data-action="export">CSV保存</button><button class="button ghost" data-action="backup">データ出力</button><label class="button ghost file-button">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
   app.querySelector('[data-action="history"]').onclick=()=>navigate('history');
   app.querySelector('[data-action="scan"]').onclick=openScanner;
   app.querySelector('[data-action="finish"]')?.addEventListener('click',finishReading);
@@ -75,11 +74,12 @@ function renderHome(){
   app.querySelector('[data-action="help"]').onclick=()=>navigate('help');
 }
 
+// 【変更】ヘルプ画面の見出しも新しいボタン名に合わせました
 function renderHelp(){
   app.innerHTML=`<h1 class="page-title">使い方・データ保存について</h1><div class="help-sections">
-  <section><h2>CSVファイルとして保存とは</h2><p>お薬の記録を、パソコンのエクセル等で一覧表として見るためのファイル（CSV）としてスマートフォン本体にダウンロード保存します。保存されたファイルをメール等に添付して、ご自身のパソコン宛てに送信してください。</p></section>
-  <section><h2>機種変更用のデータ出力とは</h2><p>すべてのお薬の記録を、機種変更や故障に備えて専用のバックアップファイル（json）として出力します。スマホ本体に自動保存されている記録を、別のスマホに移すために必要な作業です。</p><p class="help-note">機種変更やブラウザのデータを削除する前には必ず行ってください。</p></section>
-  <section><h2>データの復元とは</h2><p>出力しておいた「データ移行用ファイル」を選び、新しいスマホに記録を戻します。</p><ol><li>古いスマホで「データ出力」を押して保存します。</li><li>保存されたファイルを新しいスマホへ移します（メール等で送る）。</li><li>新しいスマホで「復元」を押し、そのファイルを選びます。</li></ol></section>
+  <section><h2>CSV保存とは</h2><p>お薬の記録を、パソコンのエクセル等で一覧表として見るためのファイル（CSV）としてスマートフォン本体にダウンロード保存します。保存されたファイルをメール等に添付して、ご自身のパソコン宛てに送信してください。</p></section>
+  <section><h2>データ出力とは</h2><p>すべてのお薬の記録を、機種変更や故障に備えて専用のバックアップファイル（json）として出力します。スマホ本体に自動保存されている記録を、別のスマホに移すために必要な作業です。</p><p class="help-note">機種変更やブラウザのデータを削除する前には必ず行ってください。</p></section>
+  <section><h2>データ復元とは</h2><p>出力しておいた「データ移行用ファイル」を選び、新しいスマホに記録を戻します。</p><ol><li>古いスマホで「データ出力」を押して保存します。</li><li>保存されたファイルを新しいスマホへ移します（メール等で送る）。</li><li>新しいスマホで「データ復元」を押し、そのファイルを選びます。</li></ol></section>
   <section><h2>記録の保存場所</h2><p>記録はサーバーへ送信されず、このスマホのブラウザ内だけに自動保存されます。</p></section></div><div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;
   app.querySelector('[data-action="home"]').onclick=()=>navigate('home');
 }
@@ -208,8 +208,6 @@ function formatDate(v){if(!/^\d{8}$/.test(v))return v;const y=+v.slice(0,4),m=+v
 async function finishReading(){if(!state.qrList.length)return;const record=parsePrescription(state.qrList.join('\n'));if(!record.medicines.length){statusText.textContent='お薬の情報を読み取れませんでした。QRコードをご確認ください。';return}const readFingerprints=[...new Set(state.qrFingerprints)];record.qrFingerprints=readFingerprints;const saved=saveRecord(record);rememberQrFingerprints(readFingerprints);state.qrList=[];state.qrFingerprints=[];state.notice='';await closeScanner();navigate('home');flash(saved?'記録を保存しました':'同じ処方の記録がすでにあります')}
 
 function csvCell(v){return'"'+String(v??'').replaceAll('"','""')+'"'}
-
-// 【変更】CSVとしてダウンロードする元の方式に戻し、メッセージを親切にしました
 function exportCsv(){
   const records=getRecords();
   if(!records.length){flash('出力する記録がありません');return}
