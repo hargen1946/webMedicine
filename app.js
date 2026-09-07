@@ -92,16 +92,17 @@ function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').sp
 function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
 function matchesStoredQr(data,fingerprints=[]){const records=getRecords();if(records.some(record=>Array.isArray(record.qrFingerprints)&&fingerprints.some(f=>record.qrFingerprints.includes(f))))return true;const incoming=parsePrescription(data);if(incoming.prescriptionDate&&incoming.hospitalName)return records.some(record=>norm(record.prescriptionDate)===norm(incoming.prescriptionDate)&&norm(record.hospitalName)===norm(incoming.hospitalName));const medicineNames=incoming.medicines.map(m=>norm(m.name)).filter(Boolean);return medicineNames.length>0&&records.some(record=>medicineNames.every(name=>record.medicines.some(m=>norm(m.name)===name)))}
 function addQrData(raw,sourceFingerprint=''){const data=normalizeQrData(raw);if(!data)return'EMPTY';const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';if(!state.qrList.length&&storedMatch)return'PREVIOUS';state.qrList.push(data);state.qrFingerprints.push(...fingerprints);state.notice='';return'ADDED'}
-
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
   await stopCamera();
   
-  statusText.style.color = '#333';
-  statusText.style.fontSize = '18px';
+  // 文字を太くする基本設定
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
+    // 【変更】成功時も赤色（#d40000）で、大きな文字（1.3em）にします
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
     statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
     showScanChoice(true);
   }else if(result==='MISSING'){
@@ -121,6 +122,7 @@ async function acceptQr(raw,sourceFingerprint=''){
     showScanChoice(false);
   }
 }
+
 
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
