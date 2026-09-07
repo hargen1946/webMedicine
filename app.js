@@ -75,15 +75,16 @@ function renderHome(){
 }
 
 // 【変更】ヘルプ画面の見出しも新しいボタン名に合わせました
+// 【変更】ヘルプ画面の見出しも新しいボタン名に合わせました
 function renderHelp(){
   app.innerHTML=`<h1 class="page-title">使い方・データ保存について</h1><div class="help-sections">
-  <section><h2>CSV保存とは</h2><p>お薬の記録を、パソコンのエクセル等で一覧表として見るためのファイル（CSV）としてスマートフォン本体にダウンロード保存します。保存されたファイルをメール等に添付して、ご自身のパソコン宛てに送信してください。</p></section>
-  <section><h2>データ出力とは</h2><p>すべてのお薬の記録を、機種変更や故障に備えて専用のバックアップファイル（json）として出力します。スマホ本体に自動保存されている記録を、別のスマホに移すために必要な作業です。</p><p class="help-note">機種変更やブラウザのデータを削除する前には必ず行ってください。</p></section>
-  <section><h2>データ復元とは</h2><p>出力しておいた「データ移行用ファイル」を選び、新しいスマホに記録を戻します。</p><ol><li>古いスマホで「データ出力」を押して保存します。</li><li>保存されたファイルを新しいスマホへ移します（メール等で送る）。</li><li>新しいスマホで「データ復元」を押し、そのファイルを選びます。</li></ol></section>
+  <section><h2>CSV保存とは</h2><p>年に一度くらいお薬の記録を、パソコンに保存したりエクセル等で一覧表として見たい場合に使います。その為の（お薬手帳.csv）ファイルとしてスマートフォン本体にダウンロード保存します。スマホのファイルアプリのダウンロードに保存されます。そのファイルをメール等に添付して、ご自身のパソコン宛てに送信してください。</p></section>
+  <section><h2>データ出力とは</h2><p>お薬の記録はその度に自動で記録されますので普通は必要ありません。機種変更や故障に備えて（お薬手帳バックアップ.json）ファイルとしてスマホのファイルアプリのダウンロードに保存されます。</p></section>
+  <section><h2>データ復元とは</h2><p>古いスマホからデータを移動した新しいスマホの（お薬手帳バックアップ.json）を選び、新しいスマホに記録を戻します。</p></section>
   <section><h2>記録の保存場所</h2><p>記録はサーバーへ送信されず、このスマホのブラウザ内だけに自動保存されます。</p></section></div><div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;
+  
   app.querySelector('[data-action="home"]').onclick=()=>navigate('home');
 }
-
 function renderHistory(){const records=getRecords();app.innerHTML=`<h1 class="page-title">記録を見る</h1><p class="page-subtitle">見たい記録を選んでください</p>${records.length?`<div class="record-list">${records.map((r,i)=>`<button class="record-card" data-index="${i}"><div class="record-date">${esc(r.prescriptionDate||'日付なし')}</div><div class="record-hospital">${esc(r.hospitalName||'医療機関名なし')}</div><div class="record-doctor">${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</div><div class="record-meta">お薬 ${r.medicines.length}件</div></button>`).join('')}</div>`:'<div class="empty">保存された記録はまだありません。</div>'}<div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;app.querySelectorAll('.record-card').forEach(b=>b.onclick=()=>navigate('detail',Number(b.dataset.index)));app.querySelector('[data-action="home"]').onclick=()=>navigate('home')}
 function renderDetail(index){const r=getRecords()[index];if(!r){navigate('history');return}app.innerHTML=`<div class="detail-head"><h1>お薬の記録</h1><div class="hospital">${esc([r.prescriptionDate,r.hospitalName].filter(Boolean).join(' '))}</div><p>${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</p></div><div class="medicine-list">${r.medicines.map(m=>`<article class="medicine"><h2>${esc(m.name)}</h2>${m.usage.map(u=>`<p>${esc(u)}</p>`).join('')}${m.quantityInfo?`<p class="quantity">${esc(m.quantityInfo)}</p>`:''}</article>`).join('')}</div><div class="bottom-actions"><button class="button secondary" data-action="back">記録一覧へ戻る</button><button class="button ghost danger" data-action="delete">この記録を削除</button></div>`;app.querySelector('[data-action="back"]').onclick=()=>navigate('history');app.querySelector('[data-action="delete"]').onclick=()=>{if(confirm('この記録を本当に削除しますか？\n削除後は元に戻せません。')){const records=getRecords();records.splice(index,1);writeRecords(records);rebuildQrHistory(records);flash('記録を削除しました');navigate('history')}}}
 
