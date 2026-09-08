@@ -61,7 +61,6 @@ function flash(message){toast.textContent=message;toast.classList.add('show');cl
 function navigate(view,selected=null){state.view=view;state.selected=selected;render();app.focus();scrollTo({top:0,behavior:'smooth'})}
 function render(){backButton.classList.toggle('hidden',state.view==='home');headerTitle.textContent=state.view==='home'?'お 薬 手 帳':state.view==='history'?'記録一覧':state.view==='help'?'使い方':'お薬の記録';if(state.view==='home')renderHome();else if(state.view==='history')renderHistory();else if(state.view==='help')renderHelp();else renderDetail(state.selected)}
 
-// 【変更】3つのボタンの名前を短くシンプルにしました
 function renderHome(){
   const count=state.qrList.length;
   app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、保存します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤ 記 録 を 見 る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦ ${count?'次のQRコードを読む':'QRコードを読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;"><button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button><button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button><label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
@@ -74,55 +73,56 @@ function renderHome(){
   app.querySelector('[data-action="help"]').onclick=()=>navigate('help');
 }
 
-// 【変更】ヘルプ画面の見出しも新しいボタン名に合わせました
-// 【変更】ヘルプ画面の見出しも新しいボタン名に合わせました
 function renderHelp(){
   app.innerHTML=`<h1 class="page-title">使い方・データ保存について</h1><div class="help-sections">
   <section><h2>CSV保存とは</h2><p>年に一度くらいお薬の記録を、パソコンに保存したりエクセル等で一覧表として見たい場合に使います。その為の（お薬手帳.csv）ファイルとしてスマートフォン本体にダウンロード保存します。スマホのファイルアプリのダウンロードに保存されます。そのファイルをメール等に添付して、ご自身のパソコン宛てに送信してください。</p></section>
   <section><h2>データ出力とは</h2><p>お薬の記録はその度に自動で記録されますので普通は必要ありません。機種変更や故障に備えて（お薬手帳バックアップ.json）ファイルとしてスマホのファイルアプリのダウンロードに保存されます。</p></section>
   <section><h2>データ復元とは</h2><p>古いスマホからデータを移動した新しいスマホの（お薬手帳バックアップ.json）を選び、新しいスマホに記録を戻します。</p></section>
   <section><h2>記録の保存場所</h2><p>記録はサーバーへ送信されず、このスマホのブラウザ内だけに自動保存されます。</p></section></div><div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;
-  
   app.querySelector('[data-action="home"]').onclick=()=>navigate('home');
 }
+
 function renderHistory(){const records=getRecords();app.innerHTML=`<h1 class="page-title">記録を見る</h1><p class="page-subtitle">見たい記録を選んでください</p>${records.length?`<div class="record-list">${records.map((r,i)=>`<button class="record-card" data-index="${i}"><div class="record-date">${esc(r.prescriptionDate||'日付なし')}</div><div class="record-hospital">${esc(r.hospitalName||'医療機関名なし')}</div><div class="record-doctor">${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</div><div class="record-meta">お薬 ${r.medicines.length}件</div></button>`).join('')}</div>`:'<div class="empty">保存された記録はまだありません。</div>'}<div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;app.querySelectorAll('.record-card').forEach(b=>b.onclick=()=>navigate('detail',Number(b.dataset.index)));app.querySelector('[data-action="home"]').onclick=()=>navigate('home')}
 function renderDetail(index){const r=getRecords()[index];if(!r){navigate('history');return}app.innerHTML=`<div class="detail-head"><h1>お薬の記録</h1><div class="hospital">${esc([r.prescriptionDate,r.hospitalName].filter(Boolean).join(' '))}</div><p>${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</p></div><div class="medicine-list">${r.medicines.map(m=>`<article class="medicine"><h2>${esc(m.name)}</h2>${m.usage.map(u=>`<p>${esc(u)}</p>`).join('')}${m.quantityInfo?`<p class="quantity">${esc(m.quantityInfo)}</p>`:''}</article>`).join('')}</div><div class="bottom-actions"><button class="button secondary" data-action="back">記録一覧へ戻る</button><button class="button ghost danger" data-action="delete">この記録を削除</button></div>`;app.querySelector('[data-action="back"]').onclick=()=>navigate('history');app.querySelector('[data-action="delete"]').onclick=()=>{if(confirm('この記録を本当に削除しますか？\n削除後は元に戻せません。')){const records=getRecords();records.splice(index,1);writeRecords(records);rebuildQrHistory(records);flash('記録を削除しました');navigate('history')}}}
 
 function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean).join('\n').trim()}
 function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
 function matchesStoredQr(data,fingerprints=[]){const records=getRecords();if(records.some(record=>Array.isArray(record.qrFingerprints)&&fingerprints.some(f=>record.qrFingerprints.includes(f))))return true;const incoming=parsePrescription(data);if(incoming.prescriptionDate&&incoming.hospitalName)return records.some(record=>norm(record.prescriptionDate)===norm(incoming.prescriptionDate)&&norm(record.hospitalName)===norm(incoming.hospitalName));const medicineNames=incoming.medicines.map(m=>norm(m.name)).filter(Boolean);return medicineNames.length>0&&records.some(record=>medicineNames.every(name=>record.medicines.some(m=>norm(m.name)===name)))}
-function addQrData(raw,sourceFingerprint=''){const data=normalizeQrData(raw);if(!data)return'EMPTY';
- function addQrData(raw,sourceFingerprint=''){
+
+function addQrData(raw,sourceFingerprint=''){
   const data=normalizeQrData(raw);
   if(!data)return'EMPTY';
 
-  // ▼▼▼ ここから追加（不正なデータを弾くチェック） ▼▼▼
-  // 1. 文字数が短すぎる（例: 20文字未満）場合は不正とする
   if (data.length < 20) {
       return 'INVALID';
   }
-  // 2. お薬データの特徴であるカンマ(,)が含まれていない場合は不正とする
   if (!data.includes(",")) {
       return 'INVALID';
   }
-  // ▲▲▲ ここまで追加 ▲▲▲
 
   const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);
-  // ... 以下省略（元のコードをそのまま残します） 
-  const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';if(!state.qrList.length&&storedMatch)return'PREVIOUS';state.qrList.push(data);state.qrFingerprints.push(...fingerprints);state.notice='';return'ADDE++D'}
-
+  if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';
+  const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();
+  if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';
+  if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';
+  if(!state.qrList.length&&storedMatch)return'PREVIOUS';
+  
+  state.qrList.push(data);
+  state.qrFingerprints.push(...fingerprints);
+  state.notice='';
+  return 'ADDED';
+}
 
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
+
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
   await stopCamera();
   
-  // 文字を太くする基本設定
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
-    // 成功時も赤色（#d40000）で、大きな文字（1.3em）にします
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
     statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
@@ -137,15 +137,11 @@ async function acceptQr(raw,sourceFingerprint=''){
     statusText.style.fontSize = '1.3em';
     statusText.textContent='読み取り済です。';
     showScanChoice(result==='DUPLICATE' ? true : state.qrList.length>0);
-    
-  // ▼▼▼ ここから追加（不正なデータを弾いた時のメッセージ） ▼▼▼
   }else if(result==='INVALID'){
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
     statusText.textContent='QRコードを正しく読み取れませんでした。もう一度お試しください。';
-    showScanChoice(false); // 保存へ進むボタンを隠します
-  // ▲▲▲ ここまで追加 ▲▲▲
-  
+    showScanChoice(false);
   }else{
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
@@ -153,6 +149,7 @@ async function acceptQr(raw,sourceFingerprint=''){
     showScanChoice(false);
   }
 }
+
 async function openScanner(){
   if(!dialog.open)dialog.showModal();
   hideScanChoice();
