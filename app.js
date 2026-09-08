@@ -91,7 +91,29 @@ function renderDetail(index){const r=getRecords()[index];if(!r){navigate('histor
 function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean).join('\n').trim()}
 function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
 function matchesStoredQr(data,fingerprints=[]){const records=getRecords();if(records.some(record=>Array.isArray(record.qrFingerprints)&&fingerprints.some(f=>record.qrFingerprints.includes(f))))return true;const incoming=parsePrescription(data);if(incoming.prescriptionDate&&incoming.hospitalName)return records.some(record=>norm(record.prescriptionDate)===norm(incoming.prescriptionDate)&&norm(record.hospitalName)===norm(incoming.hospitalName));const medicineNames=incoming.medicines.map(m=>norm(m.name)).filter(Boolean);return medicineNames.length>0&&records.some(record=>medicineNames.every(name=>record.medicines.some(m=>norm(m.name)===name)))}
-function addQrData(raw,sourceFingerprint=''){const data=normalizeQrData(raw);if(!data)return'EMPTY';const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';if(!state.qrList.length&&storedMatch)return'PREVIOUS';state.qrList.push(data);state.qrFingerprints.push(...fingerprints);state.notice='';return'ADDED'}
+function addQrData(raw,sourceFingerprint=''){const data=normalizeQrData(raw);if(!data)return'EMPTY';
+ function addQrData(raw,sourceFingerprint=''){
+  const data=normalizeQrData(raw);
+  if(!data)return'EMPTY';
+
+  // ▼▼▼ ここから追加（不正なデータを弾くチェック） ▼▼▼
+  // 1. 文字数が短すぎる（例: 20文字未満）場合は不正とする
+  if (data.length < 20) {
+      return 'INVALID';
+  }
+  // 2. お薬データの特徴であるカンマ(,)が含まれていない場合は不正とする
+  if (!data.includes(",")) {
+      return 'INVALID';
+  }
+  // ▲▲▲ ここまで追加 ▲▲▲
+
+  const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);
+  // ... 以下省略（元のコードをそのまま残します） 
+  const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';if(!state.qrList.length&&storedMatch)return'PREVIOUS';state.qrList.push(data);state.qrFingerprints.push(...fingerprints);state.notice='';return'ADDE++D'}
+
+
+function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
+function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
   await stopCamera();
@@ -100,7 +122,7 @@ async function acceptQr(raw,sourceFingerprint=''){
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
-    // 【変更】成功時も赤色（#d40000）で、大きな文字（1.3em）にします
+    // 成功時も赤色（#d40000）で、大きな文字（1.3em）にします
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
     statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
@@ -115,6 +137,15 @@ async function acceptQr(raw,sourceFingerprint=''){
     statusText.style.fontSize = '1.3em';
     statusText.textContent='読み取り済です。';
     showScanChoice(result==='DUPLICATE' ? true : state.qrList.length>0);
+    
+  // ▼▼▼ ここから追加（不正なデータを弾いた時のメッセージ） ▼▼▼
+  }else if(result==='INVALID'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.textContent='QRコードを正しく読み取れませんでした。もう一度お試しください。';
+    showScanChoice(false); // 保存へ進むボタンを隠します
+  // ▲▲▲ ここまで追加 ▲▲▲
+  
   }else{
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
@@ -122,11 +153,6 @@ async function acceptQr(raw,sourceFingerprint=''){
     showScanChoice(false);
   }
 }
-
-
-function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
-function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
-
 async function openScanner(){
   if(!dialog.open)dialog.showModal();
   hideScanChoice();
@@ -198,7 +224,7 @@ async function handleScanTimeout(){
     state.returnTimer=null;
     await closeScanner();
     navigate('home')
-  },SCAN_RETURN_DELAY_MS)
+  },5000)
 }
 
 async function stopCamera(){clearScanTimers();state.scanning=false;try{state.controls?.stop()}catch{}state.controls=null;state.stream?.getTracks?.().forEach(track=>track.stop());state.stream=null;if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}}
