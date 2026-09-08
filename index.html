@@ -1,83 +1,81 @@
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#6750a4">
-  <meta name="description" content="QRコードから処方情報を記録できる、ブラウザ版お薬手帳">
-  <link rel="manifest" href="manifest.webmanifest?v=3">
-  <link rel="icon" href="icon.svg?v=3" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon-192.png?v=2">
-  <link rel="stylesheet" href="styles.css?v=6">
-  <link rel="stylesheet" href="help.css?v=1">
-  <style>
-    .camera-frame{height:min(52dvh,440px);min-height:280px;aspect-ratio:auto}
-    .camera-frame video{width:100%!important;height:100%!important;min-height:0;object-fit:cover!important}
-    .scan-guide{position:absolute;width:78%;aspect-ratio:1;left:11%;top:50%;translate:0 -50%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 999px #0005;pointer-events:none}
-    .scan-choice{display:grid;gap:10px;margin:4px 0 13px}
-    #scanner-status{font-size:18px;font-weight:800;color:#333}
-    .scan-count{color:#d40000}
-    .record-date{font-size:17px!important}
-    .record-doctor{margin-top:8px;color:#3f3944;font-size:16px;font-weight:800}
-    .hero{padding:8px 0 0}
-    .hero h1{font-size:34px;margin:8px 0 12px}
-    .home-actions{gap:14px;margin-top:18px}
-    .home-actions .button{min-height:62px;font-size:21px}
-    .home-actions [data-action="history"]{position:relative;top:28px}
-    .home-actions [data-action="scan"]{margin-top:36px}
-    .install-button{font-size:14px;white-space:nowrap}
-    .install-guide-dialog{width:min(calc(100% - 28px),520px);border:0;border-radius:24px;padding:26px 22px;background:#fff;color:#28252d}
-    .install-guide-dialog::backdrop{background:#1c1625b8}
-    .install-guide-dialog h2{margin:0 0 20px;text-align:center;font-size:25px}
-    .install-guide-dialog p{margin:0;font-size:18px;font-weight:700;line-height:2}
-    .install-guide-actions{display:grid;gap:12px;margin-top:24px}
-    .install-guide-actions .button{font-size:20px}
-  </style>
-  <title>お薬手帳</title>
-</head>
-<body>
-  <div class="app-shell">
-    <header class="topbar">
-      <button id="back-button" class="icon-button hidden" type="button" aria-label="戻る">←</button>
-      <div class="brand"><span id="header-title">お 薬 手 帳</span></div>
-      <button id="install-button" class="install-button hidden" type="button">ホームにアイコンを置く</button>
-    </header>
-    <main id="app" tabindex="-1"></main>
-  </div>
+await stopCamera();
+  hideScanChoice();
+  
+  statusText.style.color = '#d40000';
+  statusText.style.fontSize = '1.3em';
+  statusText.textContent='読み取れません。ホームに戻ります。';
+  
+  state.returnTimer=setTimeout(async()=>{
+    state.returnTimer=null;
+    await closeScanner();
+    navigate('home')
+  }, 7000)
+}
 
-  <dialog id="scanner-dialog" class="scanner-dialog">
-    <div class="scanner-head">
-      <strong>QRコードを読み取る</strong>
-      <button id="close-scanner" class="icon-button" type="button" aria-label="閉じる">×</button>
-    </div>
-    <div id="qr-reader" class="camera-frame" aria-label="QRコード読み取りカメラ">
-      <video id="camera-video" autoplay muted playsinline></video>
-      <canvas id="scan-canvas" hidden></canvas>
-      <div class="scan-guide" aria-hidden="true"></div>
-    </div>
-    <p id="scanner-status" class="hint" aria-live="polite">カメラを起動しています…</p>
-    <div id="scan-choice" class="scan-choice hidden">
-      <button id="scanner-next" class="button orange" type="button">次のQRコードを読む</button>
-      <button id="scanner-finish" class="button success" type="button">読み取り終了</button>
-      <button id="scanner-back" class="button secondary hidden" type="button">ホームへ戻る</button>
-    </div>
-  </dialog>
+async function stopCamera(){clearScanTimers();state.scanning=false;try{state.controls?.stop()}catch{}state.controls=null;state.stream?.getTracks?.().forEach(track=>track.stop());state.stream=null;if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}}
+async function closeScanner(){await stopCamera();if(dialog.open)dialog.close()}
+function parsePrescription(data){const lines=rebuildLines(data);let prescriptionDate='',hospitalName='',department='',doctorName='';const map=new Map();const get=n=>{if(!map.has(n))map.set(n,{name:'',usage:[],medicineQuantity:'',dispensingQuantity:''});return map.get(n)};for(const line of lines){const p=line.split(',').map(x=>x.trim());if(p[0]==='5')prescriptionDate=formatDate(p[1]||'');else if(p[0]==='51')hospitalName=p[1]||'';else if(p[0]==='55'){doctorName=display(p[1]||'');department=display((p[2]||'').replace(/^【|】$/g,''))}else if(p[0]==='201'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n);if(p[2])d.name=display(p[2]);if(p[3]&&p[4])d.medicineQuantity=number(p[3])+display(p[4])}else if(p[0]==='301'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u);if(p[3]&&p[4])d.dispensingQuantity=number(p[3])+display(p[4])}else if(p[0]==='311'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u)}}const medicines=[...map.entries()].sort((a,b)=>a[0]-b[0]).map(([,d])=>({name:d.name.trim(),usage:d.usage,quantityInfo:d.dispensingQuantity.endsWith('日分')?d.dispensingQuantity:(d.medicineQuantity||d.dispensingQuantity)})).filter(m=>m.name);return{prescriptionDate,hospitalName,department,doctorName,medicines}}
+function rebuildLines(data){const codes=new Set(['1','2','3','4','5','11','15','31','51','55','201','281','291','301','311','391','401','411','421','501','601','701','911']);const out=[];for(const line of normalizeQrData(data).split('\n')){if(codes.has(line.split(',')[0].trim()))out.push(line);else if(out.length)out[out.length-1]+=line;else out.push(line)}return out}
+function display(v){return String(v).replaceAll('﨑','崎').replaceAll('髙','高').replaceAll('神','神').replaceAll('塚','塚').trim()}
+function number(v){const n=String(v).trim().replace(/[０-９]/g,c=>String(c.charCodeAt(0)-65248)).replaceAll('．','.');const x=Number(n);return Number.isFinite(x)?String(x):n}
+function formatDate(v){if(!/^\d{8}$/.test(v))return v;const y=+v.slice(0,4),m=+v.slice(4,6),d=+v.slice(6,8),dt=new Date(y,m-1,d);return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d?`${y}年${m}月${d}日`:v}
+function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean).join('\n').trim()}
+function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
 
-  <dialog id="install-guide-dialog" class="install-guide-dialog">
-    <h2>ホームにアイコンを置く</h2>
-    <p>
-      次の画面では、右下の青い「インストール」を押してください。<br>
-      これは、ホーム画面にアイコンを置くという意味です。<br>
-      置きたくない場合は「キャンセル」を押してください。
-    </p>
-    <div class="install-guide-actions">
-      <button id="install-guide-next" class="button primary" type="button">次へ</button>
-      <button id="install-guide-back" class="button secondary" type="button">戻る</button>
-    </div>
-  </dialog>
+function addQrData(raw,sourceFingerprint=''){
+  const data=normalizeQrData(raw);
+  if(!data)return'EMPTY';
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="zxing-browser.min.js?v=0.2.1"></script>
-  <script src="app.js?v=40" defer></script>
-</body>
-</html>
+  // 不正なデータを弾くチェック
+  if (data.length < 20) {
+      return 'INVALID';
+  }
+  if (!data.includes(",")) {
+      return 'INVALID';
+  }
+
+  const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);
+  if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';
+  const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();
+  if(storedMatch&&fingerprints.some(f=>history.includes(f)))return'PREVIOUS';
+  if(!state.qrList.length&&!data.split('\n').some(l=>l.trimStart().startsWith('51,')))return'MISSING';
+  if(!state.qrList.length&&storedMatch)return'PREVIOUS';
+  state.qrList.push(data);
+  state.qrFingerprints.push(...fingerprints);
+  state.notice='';
+  return'ADDED';
+}
+
+async function acceptQr(raw,sourceFingerprint=''){
+  const result=addQrData(raw,sourceFingerprint);
+  await stopCamera();
+  
+  statusText.style.fontWeight = '800';
+
+  if(result==='ADDED'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
+    showScanChoice(true);
+  }else if(result==='MISSING'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.textContent='読み取る順番が違います。やり直してください。';
+    showScanChoice(false);
+  }else if(result==='DUPLICATE' || result==='PREVIOUS'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.textContent='読み取り済です。';
+    showScanChoice(result==='DUPLICATE' ? true : state.qrList.length>0);
+  }else if(result==='INVALID'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.textContent='QRコードを正しく読み取れませんでした。もう一度お試しください。';
+    showScanChoice(false);
+  }else{
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.textContent='読み取りデータが空です。';
+    showScanChoice(false);
+  }
+}
