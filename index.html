@@ -1,83 +1,82 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#6750a4">
-  <meta name="description" content="QRコードから処方情報を記録できる、ブラウザ版お薬手帳">
-  <link rel="manifest" href="manifest.webmanifest?v=3">
-  <link rel="icon" href="icon.svg?v=3" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon-192.png?v=2">
-  <link rel="stylesheet" href="styles.css?v=6">
-  <link rel="stylesheet" href="help.css?v=1">
-  <style>
-    .camera-frame{height:min(52dvh,440px);min-height:280px;aspect-ratio:auto}
-    .camera-frame video{width:100%!important;height:100%!important;min-height:0;object-fit:cover!important}
-    .scan-guide{position:absolute;width:78%;aspect-ratio:1;left:11%;top:50%;translate:0 -50%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 999px #0005;pointer-events:none}
-    .scan-choice{display:grid;gap:10px;margin:4px 0 13px}
-    #scanner-status{font-size:18px;font-weight:800;color:#333}
-    .scan-count{color:#d40000}
-    .record-date{font-size:17px!important}
-    .record-doctor{margin-top:8px;color:#3f3944;font-size:16px;font-weight:800}
-    .hero{padding:8px 0 0}
-    .hero h1{font-size:34px;margin:8px 0 12px}
-    .home-actions{gap:14px;margin-top:18px}
-    .home-actions .button{min-height:62px;font-size:21px}
-    .home-actions [data-action="history"]{position:relative;top:28px}
-    .home-actions [data-action="scan"]{margin-top:36px}
-    .install-button{font-size:14px;white-space:nowrap}
-    .install-guide-dialog{width:min(calc(100% - 28px),520px);border:0;border-radius:24px;padding:26px 22px;background:#fff;color:#28252d}
-    .install-guide-dialog::backdrop{background:#1c1625b8}
-    .install-guide-dialog h2{margin:0 0 20px;text-align:center;font-size:25px}
-    .install-guide-dialog p{margin:0;font-size:18px;font-weight:700;line-height:2}
-    .install-guide-actions{display:grid;gap:12px;margin-top:24px}
-    .install-guide-actions .button{font-size:20px}
-  </style>
-  <title>お薬手帳</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お薬手帳</title>
+    <style>
+        /* 画面全体のデザイン設定 */
+        body {
+            font-family: sans-serif;
+            background-color: #f4f6f9;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        /* 画面の切り替え用設定 */
+        .view {
+            display: none;
+        }
+        #home {
+            display: block; /* 最初はホーム画面を表示 */
+        }
+        /* ボタンのデザイン */
+        button {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            margin: 10px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        /* カメラの画面デザイン */
+        #video {
+            width: 100%;
+            max-width: 400px;
+            background-color: #000;
+            border-radius: 8px;
+        }
+        #statusText {
+            margin: 15px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <button id="back-button" class="icon-button hidden" type="button" aria-label="戻る">←</button>
-      <div class="brand"><span id="header-title">お 薬 手 帳</span></div>
-      <button id="install-button" class="install-button hidden" type="button">ホームにアイコンを置く</button>
-    </header>
-    <main id="app" tabindex="-1"></main>
-  </div>
+    <h1>お薬手帳</h1>
 
-  <dialog id="scanner-dialog" class="scanner-dialog">
-    <div class="scanner-head">
-      <strong>QRコードを読み取る</strong>
-      <button id="close-scanner" class="icon-button" type="button" aria-label="閉じる">×</button>
+    <!-- 1. ホーム画面 -->
+    <div id="home" class="view">
+        <p>ようこそ！ボタンを押して読み取りを開始してください。</p>
+        <button onclick="navigate('scanner')">QRコードを読み取る</button>
     </div>
-    <div id="qr-reader" class="camera-frame" aria-label="QRコード読み取りカメラ">
-      <video id="camera-video" autoplay muted playsinline></video>
-      <canvas id="scan-canvas" hidden></canvas>
-      <div class="scan-guide" aria-hidden="true"></div>
-    </div>
-    <p id="scanner-status" class="hint" aria-live="polite">カメラを起動しています…</p>
-    <div id="scan-choice" class="scan-choice hidden">
-      <button id="scanner-next" class="button orange" type="button">次のQRコードを読む</button>
-      <button id="scanner-finish" class="button success" type="button">読み取り終了</button>
-      <button id="scanner-back" class="button secondary hidden" type="button">ホームへ戻る</button>
-    </div>
-  </dialog>
 
-  <dialog id="install-guide-dialog" class="install-guide-dialog">
-    <h2>ホームにアイコンを置く</h2>
-    <p>
-      次の画面では、右下の青い「インストール」を押してください。<br>
-      これは、ホーム画面にアイコンを置くという意味です。<br>
-      置きたくない場合は「キャンセル」を押してください。
-    </p>
-    <div class="install-guide-actions">
-      <button id="install-guide-next" class="button primary" type="button">次へ</button>
-      <button id="install-guide-back" class="button secondary" type="button">戻る</button>
+    <!-- 2. スキャン（カメラ）画面 -->
+    <div id="scanner" class="view">
+        <video id="video" autoplay playsinline></video>
+        <div id="statusText">カメラを起動しています...</div>
+        <div id="scanChoice" style="display: none;">
+            <button>次のデータを読み込む</button>
+        </div>
+        <br>
+        <button onclick="closeScanner()">ホームに戻る</button>
     </div>
-  </dialog>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="zxing-browser.min.js?v=0.2.1"></script>
-  <script src="app.js?v=50" defer></script>
+    <!-- 3. メッセージ表示用ダイアログ -->
+    <dialog id="dialog">
+        <p>確認メッセージ</p>
+        <button onclick="dialog.close()">閉じる</button>
+    </dialog>
+
+    <!-- ここで app.js（裏側の動き）を読み込みます -->
+    <script src="app.js"></script>
 </body>
 </html>
