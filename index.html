@@ -4,53 +4,56 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>お薬手帳</title>
-  
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <meta name="theme-color" content="#6750a4">
 </head>
 <body>
   <div class="app-shell">
+    <!-- 上部ヘッダー -->
     <header class="topbar">
-      <button id="back-button" class="icon-button hidden" type="button" aria-label="戻る">←</button>
-      <div class="brand"><span id="header-title">お 薬 手 帳</span></div>
-      <button id="install-button" class="install-button hidden" type="button">ホームにアイコンを置く</button>
+      <button id="back-button" class="icon-button hidden">←</button>
+      <div id="header-title" class="brand">お 薬 手 帳</div>
+      <button id="install-button" class="install-button hidden">ホームにアイコンを置く</button>
     </header>
+
+    <!-- メイン画面（app.jsによって中身が切り替わります） -->
     <main id="app" tabindex="-1"></main>
   </div>
 
+  <!-- QRコード読み取り画面 -->
   <dialog id="scanner-dialog" class="scanner-dialog">
     <div class="scanner-head">
-      <strong>QRコードを読み取る</strong>
-      <button id="close-scanner" class="icon-button" type="button" aria-label="閉じる">×</button>
+      <div id="scanner-status">QRコードをカメラに映してください</div>
+      <button id="close-scanner" class="icon-button">×</button>
     </div>
-    <div id="qr-reader" class="camera-frame" aria-label="QRコード読み取りカメラ">
-      <video id="camera-video" autoplay muted playsinline></video>
-      <canvas id="scan-canvas" hidden></canvas>
-      <div class="scan-guide" aria-hidden="true"></div>
+    <div class="camera-frame">
+      <video id="camera-video" playsinline></video>
     </div>
-    <p id="scanner-status" class="hint" aria-live="polite">カメラを起動しています…</p>
     <div id="scan-choice" class="scan-choice hidden">
-      <button id="scanner-next" class="button orange" type="button">次のQRコードを読む</button>
-      <button id="scanner-finish" class="button success" type="button">読み取り終了</button>
-      <button id="scanner-back" class="button secondary hidden" type="button">ホームへ戻る</button>
+      <button id="scanner-next" class="button orange hidden">次のQRコードを読む</button>
+      <button id="scanner-finish" class="button success hidden">読み取り終了・保存</button>
+      <button id="scanner-back" class="button secondary hidden">やめる</button>
     </div>
   </dialog>
 
+  <!-- インストール案内画面 -->
   <dialog id="install-guide-dialog" class="install-guide-dialog">
-    <h2>ホームにアイコンを置く</h2>
-    <p>
-      次の画面では、右下の青い「インストール」を押してください。<br>
-      これは、ホーム画面にアイコンを置くという意味です。<br>
-      置きたくない場合は「キャンセル」を押してください。
-    </p>
+    <h2 style="font-size:18px; color:var(--primary); margin-bottom:12px;">ホーム画面に追加</h2>
+    <p style="font-size:15px; line-height:1.5;">このアプリをホーム画面に追加すると、アイコンからすぐに起動できるようになります。</p>
     <div class="install-guide-actions">
-      <button id="install-guide-next" class="button primary" type="button">次へ</button>
-      <button id="install-guide-back" class="button secondary" type="button">戻る</button>
+      <button id="install-guide-back" class="button ghost" style="flex:1;">キャンセル</button>
+      <button id="install-guide-next" class="button primary" style="flex:1;">追加する</button>
     </div>
   </dialog>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="zxing-browser.min.js?v=0.2.1"></script>
-  <script src="app.js?v=70" defer></script>
+  <!-- 通知メッセージ -->
+  <div id="toast" class="toast"></div>
+
+  <!-- QRコード読み取り用ライブラリ -->
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <!-- アプリ本体のプログラム -->
+  <script src="./app.js"></script>
 </body>
 </html>

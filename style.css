@@ -1,0 +1,409 @@
+@charset "UTF-8";
+
+:root {
+  --primary: #6750a4;
+  --on-primary: #ffffff;
+  --secondary: #625b71;
+  --background: #fdfcff;
+  --surface-variant: #e7e0ec;
+  --danger: #ba1a1a;
+  --orange: #f57c00;
+  --success: #2e7d32;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: #1d1b20;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 画面の基本レイアウト */
+.app-shell {
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+/* 上部ヘッダー */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--surface-variant);
+  background-color: #fff;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: bold;
+  flex-grow: 1;
+}
+
+.install-button {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* メインコンテンツエリア */
+main {
+  padding: 32px 16px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ホーム画面のタイトル周辺 */
+.hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.hero h1 {
+  font-size: 36px;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+  color: #333;
+}
+
+.hero p {
+  color: var(--secondary);
+  font-size: 16px;
+}
+
+/* ボタン群のレイアウト */
+.button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 40px;
+}
+
+/* 基本のボタンデザイン */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 18px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 24px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.button:active {
+  opacity: 0.8;
+}
+
+/* 色付きボタン */
+.button.primary {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.button.secondary {
+  background-color: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.button.orange {
+  background-color: var(--orange);
+  color: #fff;
+}
+
+.button.success {
+  background-color: var(--success);
+  color: #fff;
+}
+
+/* 小さめのアウトラインボタン（CSV保存など） */
+.button.ghost {
+  background-color: transparent;
+  border: 1px solid var(--surface-variant);
+  color: #333;
+  border-radius: 20px;
+}
+
+.button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* 3つ並んだボタンの行 */
+.utility-row {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 32px;
+}
+
+.file-button input[type="file"] {
+  display: none;
+}
+
+/* テキストリンク（使い方など） */
+.help-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  text-decoration: underline;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 8px;
+}
+
+/* 通知メッセージ */
+.toast {
+  position: fixed;
+  bottom: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(51, 51, 51, 0.95);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: bottom 0.3s;
+  z-index: 1000;
+  font-weight: bold;
+}
+
+.toast.show {
+  bottom: 24px;
+}
+
+/* カメラ読み取り画面のダイアログ */
+.scanner-dialog {
+  width: 100%;
+  max-width: 500px;
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0 auto;
+  border: none;
+  padding: 0;
+  background: #fdfcff;
+}
+
+.scanner-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.scanner-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--surface-variant);
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.camera-frame {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  background: #000;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hint {
+  text-align: center;
+  padding: 24px 16px;
+  background: #fff;
+  color: #333;
+}
+
+.scan-choice {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff;
+}
+
+/* 履歴・使い方画面の共通パーツ */
+.page-title {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: #333;
+}
+.page-subtitle {
+  color: var(--secondary);
+  margin-bottom: 24px;
+}
+
+/* 記録一覧 */
+.record-list {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.record-card {
+  background: #fff;
+  border: 1px solid var(--surface-variant);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.record-date {
+  font-weight: bold;
+  color: var(--primary);
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.record-hospital {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.record-doctor, .record-meta {
+  color: var(--secondary);
+  font-size: 14px;
+}
+
+.bottom-actions {
+  width: 100%;
+  max-width: 400px;
+  margin-top: auto;
+  padding-top: 32px;
+}
+
+/* ヘルプ画面 */
+.help-sections {
+  text-align: left;
+  width: 100%;
+  max-width: 400px;
+}
+
+.help-sections section {
+  margin-bottom: 24px;
+}
+
+.help-sections h2 {
+  font-size: 18px;
+  color: var(--primary);
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--surface-variant);
+  padding-bottom: 4px;
+}
+
+.help-sections p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* 詳細画面 */
+.detail-head {
+  text-align: left;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--surface-variant);
+}
+
+.detail-head h1 {
+  font-size: 18px;
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+
+.detail-head .hospital {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.medicine-list {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.medicine {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 5px solid var(--primary);
+}
+
+.medicine h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #222;
+}
+
+.medicine p {
+  font-size: 15px;
+  color: #444;
+  margin-bottom: 4px;
+}
+
+.medicine .quantity {
+  font-weight: bold;
+  color: var(--primary);
+  margin-top: 8px;
+}
+
+.install-guide-dialog {
+  padding: 24px;
+  border-radius: 16px;
+  border: none;
+  width: 90%;
+  max-width: 400px;
+}
+.install-guide-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
