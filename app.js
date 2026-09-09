@@ -1,8 +1,8 @@
 'use strict';
 const STORAGE_KEY='medicine-notebook.records.v1';
 const QR_HISTORY_KEY='medicine-notebook.qr-fingerprints.v1';
-const SCAN_TIMEOUT_MS=5000;
-const SCAN_RETURN_DELAY_MS=3000;
+const SCAN_TIMEOUT_MS=4000;
+const SCAN_RETURN_DELAY_MS=2000;
 const state={view:'home',selected:null,qrList:[],qrFingerprints:[],notice:'',stream:null,reader:null,controls:null,scanning:false,scanTimer:null,returnTimer:null};
 const app=document.querySelector('#app');
 const backButton=document.querySelector('#back-button');
