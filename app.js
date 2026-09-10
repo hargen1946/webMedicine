@@ -157,13 +157,19 @@ async function acceptQr(raw,sourceFingerprint=''){
   }
 }
 
-async function openScanner(){
+  async function openScanner(){
   if(!dialog.open)dialog.showModal();
   hideScanChoice();
   statusText.style.color = '#333';
   statusText.style.fontSize = '18px';
   statusText.style.fontWeight = '800';
-  statusText.textContent=state.qrList.length?'次のQRコードを枠内に映してください':'QRコードを枠内に映してください';
+  
+  // ▼ ここが新しい件数表示のプログラムです ▼
+  if(state.qrList.length > 0){
+    statusText.innerHTML = `<span style="color:#d40000; font-size:24px;">現在 ${state.qrList.length} 件 読取済</span><br>次のQRコードを枠内に映してください`;
+  } else {
+    statusText.textContent = 'QRコードを枠内に映してください';
+  }
   
   if(typeof ZXingBrowser==='undefined'){
     statusText.style.color = '#d40000';
@@ -191,7 +197,7 @@ async function startCamera(){
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
       
       // ズームを1.0倍に変更（標準サイズ）
-      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.0), caps.zoom.max);
+      if(caps.zoom) advanced.zoom = caps.zoom.min;
       
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}

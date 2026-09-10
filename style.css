@@ -417,7 +417,7 @@ video {
   height: 250px;
   border: 4px solid #4CAF50;
   border-radius: 12px;
-  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.1;
   pointer-events: none;
   z-index: 100;
 }
