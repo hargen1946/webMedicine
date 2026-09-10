@@ -11,7 +11,7 @@ const dialog=document.querySelector('#scanner-dialog');
 const video=document.querySelector('#camera-video');
 const statusText=document.querySelector('#scanner-status');
 const toast=document.querySelector('#toast');
-const scanGuide=document.querySelector('.scan-guide'); // ガイド枠を操作する準備
+const scanGuide=document.querySelector('.scan-guide');
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
 function getRecords(){
@@ -125,7 +125,17 @@ function playBeep(){
 
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
-  await stopCamera(); // ここでカメラが止まると同時に枠も消えます
+  
+  // ▼ ここが新しい「読み取り済みの場合はカメラを止めない」機能です ▼
+  if(result==='DUPLICATE' || result==='PREVIOUS'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.1em';
+    statusText.textContent = '読取済のコードです。次のQRへカメラをずらしてください。';
+    state.scanning = true; // カメラを止めずに継続する
+    return;
+  }
+  
+  await stopCamera(); 
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
@@ -139,11 +149,6 @@ async function acceptQr(raw,sourceFingerprint=''){
     statusText.style.fontSize = '1.3em';
     statusText.textContent='読み取る順番が違います。やり直してください。';
     showScanChoice(false);
-  }else if(result==='DUPLICATE' || result==='PREVIOUS'){
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.3em';
-    statusText.textContent='読み取り済です。';
-    showScanChoice(result==='DUPLICATE' ? true : state.qrList.length>0);
   }else if(result==='INVALID'){
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
@@ -157,14 +162,13 @@ async function acceptQr(raw,sourceFingerprint=''){
   }
 }
 
-  async function openScanner(){
+async function openScanner(){
   if(!dialog.open)dialog.showModal();
   hideScanChoice();
   statusText.style.color = '#333';
   statusText.style.fontSize = '18px';
   statusText.style.fontWeight = '800';
   
-  // ▼ ここが新しい件数表示のプログラムです ▼
   if(state.qrList.length > 0){
     statusText.innerHTML = `<span style="color:#d40000; font-size:24px;">現在 ${state.qrList.length} 件 読取済</span><br>次のQRコードを枠内に映してください`;
   } else {
@@ -181,7 +185,7 @@ async function acceptQr(raw,sourceFingerprint=''){
 
 async function startCamera(){
   await stopCamera();
-  if(scanGuide) scanGuide.style.display = 'block'; // カメラ起動時に枠を出す
+  if(scanGuide) scanGuide.style.display = 'block';
   try{
     const hints=new Map([[3,true],[4,'Shift_JIS']]);
     state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
@@ -196,8 +200,8 @@ async function startCamera(){
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
       
-      // ズームを1.0倍に変更（標準サイズ）
-      if(caps.zoom) advanced.zoom = caps.zoom.min;
+      // ▼ ズームをベストな1.3倍に設定 ▼
+      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.3), caps.zoom.max);
       
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
@@ -243,7 +247,7 @@ async function handleScanTimeout(){
 async function stopCamera(){
   clearScanTimers();
   state.scanning=false;
-  if(scanGuide) scanGuide.style.display = 'none'; // カメラ停止時に枠と影を消す
+  if(scanGuide) scanGuide.style.display = 'none';
   try{state.controls?.stop()}catch{}
   state.controls=null;
   state.stream?.getTracks?.().forEach(track=>track.stop());
