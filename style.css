@@ -425,3 +425,7 @@ video {
   position: relative;
   overflow: hidden;
 }
+#toast {
+  top: 20px;
+  bottom: auto;
+}
