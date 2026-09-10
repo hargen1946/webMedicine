@@ -410,15 +410,16 @@ video {
 /* 読み取りガイド枠のデザイン */
 /* 読み取りガイド枠のデザイン */
 .scan-guide {
+  display: none; /* ★カメラ起動時以外は隠す（インストール画面のバグ修正） */
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 340px; /* ★枠を大きく広げ、スマホを近づけやすくしました */
-  height: 340px; /* ★枠を大きく広げ、スマホを近づけやすくしました */
+  width: 250px;  /* ★的として使いやすい元のサイズに戻しました */
+  height: 250px;
   border: 4px solid #4CAF50;
   border-radius: 12px;
-  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.4);
   pointer-events: none;
   z-index: 100;
 }
@@ -427,8 +428,9 @@ video {
   overflow: hidden;
 }
 
-/* 通知メッセージのデザイン */
+/* 通知メッセージを上部に出す */
 #toast {
-  top: 20px !important; /* ★強制的に一番上に出す魔法の言葉(!important)を追加 */
-  bottom: auto !important; /* ★下には出さないよう強制 */
+  top: 20px;
+  bottom: auto;
+  /* ★強引な設定(!important)を消し、自然に消えるように直しました */
 }
