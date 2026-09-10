@@ -63,7 +63,7 @@ function render(){backButton.classList.toggle('hidden',state.view==='home');head
 
 function renderHome(){
   const count=state.qrList.length;
-  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、記録します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤　 記 　録　 を　 見　 る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦　 ${count?'次のQRコードを読む':'Q R コード を読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;"><button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button><button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button><label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
+  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、記録します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤  記  録  を  見  る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦  ${count?'次のQRコードを読む':'Q R コード を読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;"><button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button><button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button><label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
   app.querySelector('[data-action="history"]').onclick=()=>navigate('history');
   app.querySelector('[data-action="scan"]').onclick=openScanner;
   app.querySelector('[data-action="finish"]')?.addEventListener('click',finishReading);
@@ -172,7 +172,7 @@ async function startCamera(){
   try{
     const hints=new Map([[3,true],[4,'Shift_JIS']]);
     state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
-    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280,min:720},height:{ideal:720,min:480}},audio:false};
+    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1920,min:1280},height:{ideal:1080,min:720}},audio:false};
     state.scanning=true;
     state.controls=await state.reader.decodeFromConstraints(constraints,video,(result)=>{if(!result||!state.scanning)return;state.scanning=false;acceptQr(decodeZxingResult(result),zxingFingerprint(result))});
     state.stream=video.srcObject;
@@ -182,6 +182,7 @@ async function startCamera(){
       if(Array.isArray(caps.focusMode)&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
+      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.5), caps.zoom.max);
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
     if(state.scanning)state.scanTimer=setTimeout(handleScanTimeout,SCAN_TIMEOUT_MS)
@@ -190,6 +191,7 @@ async function startCamera(){
     statusText.textContent=location.protocol==='https:'?'カメラを使用できません。Chromeのカメラ権限をご確認ください。':'カメラ利用にはHTTPSが必要です。'
   }
 }
+
 function zxingFingerprint(result){try{const bytes=result.getRawBytes?.();if(!bytes?.length)return'';let hash=2166136261;for(const byte of bytes){hash^=byte;hash=Math.imul(hash,16777619)}return`raw:${bytes.length}:${hash>>>0}`}catch{return''}}
 
 function decodeZxingResult(result){
