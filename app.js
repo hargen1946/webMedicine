@@ -84,7 +84,22 @@ function renderHelp(){
 }
 
 function renderHistory(){const records=getRecords();app.innerHTML=`<h1 class="page-title">記録を見る</h1><p class="page-subtitle">見たい記録を選んでください</p>${records.length?`<div class="record-list">${records.map((r,i)=>`<button class="record-card" data-index="${i}"><div class="record-date">${esc(r.prescriptionDate||'日付なし')}</div><div class="record-hospital">${esc(r.hospitalName||'医療機関名なし')}</div><div class="record-doctor">${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</div><div class="record-meta">お薬 ${r.medicines.length}件</div></button>`).join('')}</div>`:'<div class="empty">保存された記録はまだありません。</div>'}<div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;app.querySelectorAll('.record-card').forEach(b=>b.onclick=()=>navigate('detail',Number(b.dataset.index)));app.querySelector('[data-action="home"]').onclick=()=>navigate('home')}
-function renderDetail(index){const r=getRecords()[index];if(!r){navigate('history');return}app.innerHTML=`<div class="detail-head"><h1>お薬の記録</h1><div class="hospital">${esc([r.prescriptionDate,r.hospitalName].filter(Boolean).join(' '))}</div><p>${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</p></div><div class="medicine-list">${r.medicines.map(m=>`<article class="medicine"><h2>${esc(m.name)}</h2>${m.usage.map(u=>`<p>${esc(u)}</p>`).join('')}${m.quantityInfo?`<p class="quantity">${esc(m.quantityInfo)}</p>`:''}</article>`).join('')}</div><div class="bottom-actions"><button class="button secondary" data-action="back">記録一覧へ戻る</button><button class="button ghost danger" data-action="delete">この記録を削除</button></div>`;app.querySelector('[data-action="back"]').onclick=()=>navigate('history');app.querySelector('[data-action="delete"]').onclick=()=>{if(confirm('この記録を本当に削除しますか？\n削除後は元に戻せません。')){const records=getRecords();records.splice(index,1);writeRecords(records);rebuildQrHistory(records);flash('記録を削除しました');navigate('history')}}}
+function renderDetail(index){
+  const r=getRecords()[index];
+  if(!r){navigate('history');return}
+  app.innerHTML=`<div class="detail-head"><h1>お薬の記録</h1><div class="hospital">${esc([r.prescriptionDate,r.hospitalName].filter(Boolean).join(' '))}</div><p>${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</p></div><div class="medicine-list">${r.medicines.map(m=>`<article class="medicine"><h2>${esc(m.name)}</h2>${m.usage.map(u=>`<p>${esc(u)}</p>`).join('')}${m.quantityInfo?`<p class="quantity">${esc(m.quantityInfo)}</p>`:''}</article>`).join('')}</div><div class="bottom-actions"><button class="button secondary" data-action="back">記録一覧へ戻る</button><button class="button ghost danger" data-action="delete">この記録を削除</button></div>`;
+  app.querySelector('[data-action="back"]').onclick=()=>navigate('history');
+  
+  app.querySelector('[data-action="delete"]').onclick=()=>{
+    // ▼ 邪魔な「システム確認画面」を廃止し、ボタンを押したらダイレクトに削除されるように修正 ▼
+    const records=getRecords();
+    records.splice(index,1);
+    writeRecords(records);
+    rebuildQrHistory(records);
+    flash('記録を削除しました');
+    navigate('history');
+  }
+}
 
 function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean).join('\n').trim()}
 function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
@@ -111,7 +126,6 @@ function addQrData(raw,sourceFingerprint=''){
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
 
-/* ピッ！という音を鳴らす関数 */
 function playBeep(){
   try{
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -130,7 +144,7 @@ async function acceptQr(raw,sourceFingerprint=''){
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.1em';
     statusText.textContent = '読取済のコードです。次のQRへカメラをずらしてください。';
-    state.scanning = true; // カメラを止めずに継続する
+    state.scanning = true;
     return;
   }
   
@@ -189,8 +203,8 @@ async function startCamera(){
     const hints=new Map([[3,true],[4,'Shift_JIS']]);
     state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
     
-    // ▼ 画質をHD(1280x720)に戻し、スマホの分析スピードを最速化します ▼
-    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280,min:720},height:{ideal:720,min:480}},audio:false};
+    // ▼ 一番調子が良かった「フルHD(1920x1080)」に画質を戻しました ▼
+    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1920,min:1280},height:{ideal:1080,min:720}},audio:false};
     
     state.scanning=true;
     state.controls=await state.reader.decodeFromConstraints(constraints,video,(result)=>{if(!result||!state.scanning)return;state.scanning=false;acceptQr(decodeZxingResult(result),zxingFingerprint(result))});
@@ -201,7 +215,10 @@ async function startCamera(){
       if(Array.isArray(caps.focusMode)&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
+      
+      // ズームは無し（等倍）
       if(caps.zoom) advanced.zoom = caps.zoom.min;
+      
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
     if(state.scanning)state.scanTimer=setTimeout(handleScanTimeout,SCAN_TIMEOUT_MS)
