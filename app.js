@@ -11,6 +11,7 @@ const dialog=document.querySelector('#scanner-dialog');
 const video=document.querySelector('#camera-video');
 const statusText=document.querySelector('#scanner-status');
 const toast=document.querySelector('#toast');
+const scanGuide=document.querySelector('.scan-guide'); // ガイド枠を操作する準備
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
 function getRecords(){
@@ -124,11 +125,11 @@ function playBeep(){
 
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
-  await stopCamera();
+  await stopCamera(); // ここでカメラが止まると同時に枠も消えます
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
-    playBeep(); // 成功時に音を鳴らす
+    playBeep();
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
     statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
@@ -174,6 +175,7 @@ async function openScanner(){
 
 async function startCamera(){
   await stopCamera();
+  if(scanGuide) scanGuide.style.display = 'block'; // カメラ起動時に枠を出す
   try{
     const hints=new Map([[3,true],[4,'Shift_JIS']]);
     state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
@@ -188,8 +190,8 @@ async function startCamera(){
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
       
-      // ズームを2.5倍に強化
-      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.7), caps.zoom.max);
+      // ズームを1.0倍に変更（標準サイズ）
+      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.0), caps.zoom.max);
       
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
@@ -232,7 +234,16 @@ async function handleScanTimeout(){
   },5000)
 }
 
-async function stopCamera(){clearScanTimers();state.scanning=false;try{state.controls?.stop()}catch{}state.controls=null;state.stream?.getTracks?.().forEach(track=>track.stop());state.stream=null;if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}}
+async function stopCamera(){
+  clearScanTimers();
+  state.scanning=false;
+  if(scanGuide) scanGuide.style.display = 'none'; // カメラ停止時に枠と影を消す
+  try{state.controls?.stop()}catch{}
+  state.controls=null;
+  state.stream?.getTracks?.().forEach(track=>track.stop());
+  state.stream=null;
+  if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}
+}
 async function closeScanner(){await stopCamera();if(dialog.open)dialog.close()}
 function parsePrescription(data){const lines=rebuildLines(data);let prescriptionDate='',hospitalName='',department='',doctorName='';const map=new Map();const get=n=>{if(!map.has(n))map.set(n,{name:'',usage:[],medicineQuantity:'',dispensingQuantity:''});return map.get(n)};for(const line of lines){const p=line.split(',').map(x=>x.trim());if(p[0]==='5')prescriptionDate=formatDate(p[1]||'');else if(p[0]==='51')hospitalName=p[1]||'';else if(p[0]==='55'){doctorName=display(p[1]||'');department=display((p[2]||'').replace(/^【|】$/g,''))}else if(p[0]==='201'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n);if(p[2])d.name=display(p[2]);if(p[3]&&p[4])d.medicineQuantity=number(p[3])+display(p[4])}else if(p[0]==='301'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u);if(p[3]&&p[4])d.dispensingQuantity=number(p[3])+display(p[4])}else if(p[0]==='311'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u)}}const medicines=[...map.entries()].sort((a,b)=>a[0]-b[0]).map(([,d])=>({name:d.name.trim(),usage:d.usage,quantityInfo:d.dispensingQuantity.endsWith('日分')?d.dispensingQuantity:(d.medicineQuantity||d.dispensingQuantity)})).filter(m=>m.name);return{prescriptionDate,hospitalName,department,doctorName,medicines}}
 function rebuildLines(data){const codes=new Set(['1','2','3','4','5','11','15','31','51','55','201','281','291','301','311','391','401','411','421','501','601','701','911']);const out=[];for(const line of normalizeQrData(data).split('\n')){if(codes.has(line.split(',')[0].trim()))out.push(line);else if(out.length)out[out.length-1]+=line;else out.push(line)}return out}
