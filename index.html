@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>お薬手帳</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=150">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <meta name="theme-color" content="#6750a4">
 </head>
@@ -30,12 +30,11 @@
     </div>
     <div class="camera-frame">
       <video id="camera-video" playsinline></video>
-     <div class="scan-guide"></div> 
     </div>
     <div id="scan-choice" class="scan-choice hidden">
       <button id="scanner-next" class="button orange hidden">次のQRコードを読む</button>
       <button id="scanner-finish" class="button success hidden">読み取り終了・保存</button>
-      <button id="scanner-back" class="button secondary hidden">中止</button>
+      <button id="scanner-back" class="button secondary hidden">やめる</button>
     </div>
   </dialog>
 
@@ -55,6 +54,6 @@
   <!-- QRコード読み取り用ライブラリ -->
   <script src="https://unpkg.com/@zxing/browser@latest"></script>
   <!-- アプリ本体のプログラム -->
-  <script src="./app.js?v v=1"165></script>
+  <script src="./app.js"></script>
 </body>
 </html>

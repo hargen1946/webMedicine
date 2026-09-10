@@ -1,8 +1,8 @@
 'use strict';
 const STORAGE_KEY='medicine-notebook.records.v1';
 const QR_HISTORY_KEY='medicine-notebook.qr-fingerprints.v1';
-const SCAN_TIMEOUT_MS=4000;
-const SCAN_RETURN_DELAY_MS=2000;
+const SCAN_TIMEOUT_MS=12000;
+const SCAN_RETURN_DELAY_MS=5000;
 const state={view:'home',selected:null,qrList:[],qrFingerprints:[],notice:'',stream:null,reader:null,controls:null,scanning:false,scanTimer:null,returnTimer:null};
 const app=document.querySelector('#app');
 const backButton=document.querySelector('#back-button');
@@ -11,7 +11,6 @@ const dialog=document.querySelector('#scanner-dialog');
 const video=document.querySelector('#camera-video');
 const statusText=document.querySelector('#scanner-status');
 const toast=document.querySelector('#toast');
-const scanGuide=document.querySelector('.scan-guide');
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
 function getRecords(){
@@ -64,7 +63,7 @@ function render(){backButton.classList.toggle('hidden',state.view==='home');head
 
 function renderHome(){
   const count=state.qrList.length;
-  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、記録します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤  記  録  を  見  る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦  ${count?'次のQRコードを読む':'Q R コード を読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;"><button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button><button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button><label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
+  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、保存します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤ 記 録 を 見 る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦ ${count?'次のQRコードを読む':'QRコードを読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;"><button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button><button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button><label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
   app.querySelector('[data-action="history"]').onclick=()=>navigate('history');
   app.querySelector('[data-action="scan"]').onclick=openScanner;
   app.querySelector('[data-action="finish"]')?.addEventListener('click',finishReading);
@@ -84,22 +83,7 @@ function renderHelp(){
 }
 
 function renderHistory(){const records=getRecords();app.innerHTML=`<h1 class="page-title">記録を見る</h1><p class="page-subtitle">見たい記録を選んでください</p>${records.length?`<div class="record-list">${records.map((r,i)=>`<button class="record-card" data-index="${i}"><div class="record-date">${esc(r.prescriptionDate||'日付なし')}</div><div class="record-hospital">${esc(r.hospitalName||'医療機関名なし')}</div><div class="record-doctor">${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</div><div class="record-meta">お薬 ${r.medicines.length}件</div></button>`).join('')}</div>`:'<div class="empty">保存された記録はまだありません。</div>'}<div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>`;app.querySelectorAll('.record-card').forEach(b=>b.onclick=()=>navigate('detail',Number(b.dataset.index)));app.querySelector('[data-action="home"]').onclick=()=>navigate('home')}
-function renderDetail(index){
-  const r=getRecords()[index];
-  if(!r){navigate('history');return}
-  app.innerHTML=`<div class="detail-head"><h1>お薬の記録</h1><div class="hospital">${esc([r.prescriptionDate,r.hospitalName].filter(Boolean).join(' '))}</div><p>${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</p></div><div class="medicine-list">${r.medicines.map(m=>`<article class="medicine"><h2>${esc(m.name)}</h2>${m.usage.map(u=>`<p>${esc(u)}</p>`).join('')}${m.quantityInfo?`<p class="quantity">${esc(m.quantityInfo)}</p>`:''}</article>`).join('')}</div><div class="bottom-actions"><button class="button secondary" data-action="back">記録一覧へ戻る</button><button class="button ghost danger" data-action="delete">この記録を削除</button></div>`;
-  app.querySelector('[data-action="back"]').onclick=()=>navigate('history');
-  
-  app.querySelector('[data-action="delete"]').onclick=()=>{
-    // ▼ 邪魔な「システム確認画面」を廃止し、ボタンを押したらダイレクトに削除されるように修正 ▼
-    const records=getRecords();
-    records.splice(index,1);
-    writeRecords(records);
-    rebuildQrHistory(records);
-    flash('記録を削除しました');
-    navigate('history');
-  }
-}
+function renderDetail(index){const r=getRecords()[index];if(!r){navigate('history');return}app.innerHTML=`<div class="detail-head"><h1>お薬の記録</h1><div class="hospital">${esc([r.prescriptionDate,r.hospitalName].filter(Boolean).join(' '))}</div><p>${esc([r.department,r.doctorName&&r.doctorName+' 先生'].filter(Boolean).join(' '))}</p></div><div class="medicine-list">${r.medicines.map(m=>`<article class="medicine"><h2>${esc(m.name)}</h2>${m.usage.map(u=>`<p>${esc(u)}</p>`).join('')}${m.quantityInfo?`<p class="quantity">${esc(m.quantityInfo)}</p>`:''}</article>`).join('')}</div><div class="bottom-actions"><button class="button secondary" data-action="back">記録一覧へ戻る</button><button class="button ghost danger" data-action="delete">この記録を削除</button></div>`;app.querySelector('[data-action="back"]').onclick=()=>navigate('history');app.querySelector('[data-action="delete"]').onclick=()=>{if(confirm('この記録を本当に削除しますか？\n削除後は元に戻せません。')){const records=getRecords();records.splice(index,1);writeRecords(records);rebuildQrHistory(records);flash('記録を削除しました');navigate('history')}}}
 
 function normalizeQrData(data){return String(data||'').replace(/\r\n?/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean).join('\n').trim()}
 function qrFingerprint(data){const value=normalizeQrData(data).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\ufffd]/g,'').replace(/\s+/g,'');if(!value)return'';let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return`text:${value.length}:${hash>>>0}`}
@@ -108,8 +92,14 @@ function matchesStoredQr(data,fingerprints=[]){const records=getRecords();if(rec
 function addQrData(raw,sourceFingerprint=''){
   const data=normalizeQrData(raw);
   if(!data)return'EMPTY';
-  if (data.length < 20) return 'INVALID';
-  if (!data.includes(",")) return 'INVALID';
+
+  if (data.length < 20) {
+      return 'INVALID';
+  }
+  if (!data.includes(",")) {
+      return 'INVALID';
+  }
+
   const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);
   if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';
   const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();
@@ -126,33 +116,13 @@ function addQrData(raw,sourceFingerprint=''){
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
 
-function playBeep(){
-  try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    osc.frequency.value = 1200;
-    osc.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.1);
-  }catch(e){}
-}
-
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
+  await stopCamera();
   
-  if(result==='DUPLICATE' || result==='PREVIOUS'){
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.1em';
-    statusText.textContent = '読取済のコードです。次のQRへカメラをずらしてください。';
-    state.scanning = true;
-    return;
-  }
-  
-  await stopCamera(); 
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
-    playBeep();
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
     statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
@@ -162,6 +132,11 @@ async function acceptQr(raw,sourceFingerprint=''){
     statusText.style.fontSize = '1.3em';
     statusText.textContent='読み取る順番が違います。やり直してください。';
     showScanChoice(false);
+  }else if(result==='DUPLICATE' || result==='PREVIOUS'){
+    statusText.style.color = '#d40000';
+    statusText.style.fontSize = '1.3em';
+    statusText.textContent='読み取り済です。';
+    showScanChoice(result==='DUPLICATE' ? true : state.qrList.length>0);
   }else if(result==='INVALID'){
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
@@ -178,15 +153,11 @@ async function acceptQr(raw,sourceFingerprint=''){
 async function openScanner(){
   if(!dialog.open)dialog.showModal();
   hideScanChoice();
+  
   statusText.style.color = '#333';
   statusText.style.fontSize = '18px';
   statusText.style.fontWeight = '800';
-  
-  if(state.qrList.length > 0){
-    statusText.innerHTML = `<span style="color:#d40000; font-size:24px;">現在 ${state.qrList.length} 件 読取済</span><br>次のQRコードを枠内に映してください`;
-  } else {
-    statusText.textContent = 'QRコードを枠内に映してください';
-  }
+  statusText.textContent=state.qrList.length?'次のQRコードをカメラに映してください':'QRコードをカメラに映してください';
   
   if(typeof ZXingBrowser==='undefined'){
     statusText.style.color = '#d40000';
@@ -198,14 +169,10 @@ async function openScanner(){
 
 async function startCamera(){
   await stopCamera();
-  if(scanGuide) scanGuide.style.display = 'block';
   try{
     const hints=new Map([[3,true],[4,'Shift_JIS']]);
     state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
-    
-    // ▼ 一番調子が良かった「フルHD(1920x1080)」に画質を戻しました ▼
-    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1920,min:1280},height:{ideal:1080,min:720}},audio:false};
-    
+    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280,min:720},height:{ideal:720,min:480}},audio:false};
     state.scanning=true;
     state.controls=await state.reader.decodeFromConstraints(constraints,video,(result)=>{if(!result||!state.scanning)return;state.scanning=false;acceptQr(decodeZxingResult(result),zxingFingerprint(result))});
     state.stream=video.srcObject;
@@ -215,10 +182,6 @@ async function startCamera(){
       if(Array.isArray(caps.focusMode)&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
-      
-      // ズームは無し（等倍）
-      if(caps.zoom) advanced.zoom = caps.zoom.min;
-      
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
     if(state.scanning)state.scanTimer=setTimeout(handleScanTimeout,SCAN_TIMEOUT_MS)
@@ -227,7 +190,6 @@ async function startCamera(){
     statusText.textContent=location.protocol==='https:'?'カメラを使用できません。Chromeのカメラ権限をご確認ください。':'カメラ利用にはHTTPSが必要です。'
   }
 }
-
 function zxingFingerprint(result){try{const bytes=result.getRawBytes?.();if(!bytes?.length)return'';let hash=2166136261;for(const byte of bytes){hash^=byte;hash=Math.imul(hash,16777619)}return`raw:${bytes.length}:${hash>>>0}`}catch{return''}}
 
 function decodeZxingResult(result){
@@ -250,9 +212,11 @@ async function handleScanTimeout(){
   state.scanTimer=null;
   await stopCamera();
   hideScanChoice();
+  
   statusText.style.color = '#d40000';
   statusText.style.fontSize = '1.3em';
   statusText.textContent='読み取れません。ホームに戻ります。';
+  
   state.returnTimer=setTimeout(async()=>{
     state.returnTimer=null;
     await closeScanner();
@@ -260,16 +224,7 @@ async function handleScanTimeout(){
   },5000)
 }
 
-async function stopCamera(){
-  clearScanTimers();
-  state.scanning=false;
-  if(scanGuide) scanGuide.style.display = 'none';
-  try{state.controls?.stop()}catch{}
-  state.controls=null;
-  state.stream?.getTracks?.().forEach(track=>track.stop());
-  state.stream=null;
-  if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}
-}
+async function stopCamera(){clearScanTimers();state.scanning=false;try{state.controls?.stop()}catch{}state.controls=null;state.stream?.getTracks?.().forEach(track=>track.stop());state.stream=null;if(video.srcObject){video.srcObject.getTracks?.().forEach(track=>track.stop());video.srcObject=null}}
 async function closeScanner(){await stopCamera();if(dialog.open)dialog.close()}
 function parsePrescription(data){const lines=rebuildLines(data);let prescriptionDate='',hospitalName='',department='',doctorName='';const map=new Map();const get=n=>{if(!map.has(n))map.set(n,{name:'',usage:[],medicineQuantity:'',dispensingQuantity:''});return map.get(n)};for(const line of lines){const p=line.split(',').map(x=>x.trim());if(p[0]==='5')prescriptionDate=formatDate(p[1]||'');else if(p[0]==='51')hospitalName=p[1]||'';else if(p[0]==='55'){doctorName=display(p[1]||'');department=display((p[2]||'').replace(/^【|】$/g,''))}else if(p[0]==='201'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n);if(p[2])d.name=display(p[2]);if(p[3]&&p[4])d.medicineQuantity=number(p[3])+display(p[4])}else if(p[0]==='301'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u);if(p[3]&&p[4])d.dispensingQuantity=number(p[3])+display(p[4])}else if(p[0]==='311'){const n=Number.parseInt(p[1],10);if(Number.isNaN(n))continue;const d=get(n),u=display(p[2]||'');if(u&&!d.usage.includes(u))d.usage.push(u)}}const medicines=[...map.entries()].sort((a,b)=>a[0]-b[0]).map(([,d])=>({name:d.name.trim(),usage:d.usage,quantityInfo:d.dispensingQuantity.endsWith('日分')?d.dispensingQuantity:(d.medicineQuantity||d.dispensingQuantity)})).filter(m=>m.name);return{prescriptionDate,hospitalName,department,doctorName,medicines}}
 function rebuildLines(data){const codes=new Set(['1','2','3','4','5','11','15','31','51','55','201','281','291','301','311','391','401','411','421','501','601','701','911']);const out=[];for(const line of normalizeQrData(data).split('\n')){if(codes.has(line.split(',')[0].trim()))out.push(line);else if(out.length)out[out.length-1]+=line;else out.push(line)}return out}
@@ -284,7 +239,9 @@ function exportCsv(){
   if(!records.length){flash('出力する記録がありません');return}
   const rows=[['処方日','医療機関','診療科','医師名','薬品名','用法','数量']];
   for(const r of records)for(const m of r.medicines)rows.push([r.prescriptionDate,r.hospitalName,r.department,r.doctorName,m.name,m.usage.join(' / '),m.quantityInfo]);
+  
   const csvContent = '\ufeff'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
+  
   download(csvContent,'お薬手帳.csv','text/csv;charset=utf-8');
   flash('「お薬手帳.csv」をダウンロードしました。スマホの「ファイル」アプリや「ダウンロード」フォルダをご確認ください。');
 }
@@ -294,7 +251,7 @@ function importJson(e){const file=e.target.files[0];if(!file)return;const reader
 
 backButton.onclick=()=>state.view==='detail'?navigate('history'):navigate('home');
 document.querySelector('#close-scanner').onclick=closeScanner;
-document.querySelector('#scanner-next').onclick=async()=>{hideScanChoice();statusText.textContent='次のQRコードを枠内に映してください';await startCamera()};
+document.querySelector('#scanner-next').onclick=async()=>{hideScanChoice();statusText.textContent='次のQRコードをカメラに映してください';await startCamera()};
 document.querySelector('#scanner-finish').onclick=finishReading;
 document.querySelector('#scanner-back').onclick=closeScanner;
 dialog.addEventListener('cancel',e=>{e.preventDefault();closeScanner()});
