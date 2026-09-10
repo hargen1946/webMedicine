@@ -189,7 +189,7 @@ async function startCamera(){
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
       
       // ズームを2.5倍に強化
-      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 2.5), caps.zoom.max);
+      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.9), caps.zoom.max);
       
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
