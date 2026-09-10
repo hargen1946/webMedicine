@@ -92,14 +92,8 @@ function matchesStoredQr(data,fingerprints=[]){const records=getRecords();if(rec
 function addQrData(raw,sourceFingerprint=''){
   const data=normalizeQrData(raw);
   if(!data)return'EMPTY';
-
-  if (data.length < 20) {
-      return 'INVALID';
-  }
-  if (!data.includes(",")) {
-      return 'INVALID';
-  }
-
+  if (data.length < 20) return 'INVALID';
+  if (!data.includes(",")) return 'INVALID';
   const fingerprints=[qrFingerprint(data),sourceFingerprint].filter(Boolean);
   if(fingerprints.some(f=>state.qrFingerprints.includes(f))||state.qrList.some(q=>qrFingerprint(q)===fingerprints[0]))return'DUPLICATE';
   const storedMatch=matchesStoredQr(data,fingerprints),history=getQrHistory();
@@ -116,13 +110,25 @@ function addQrData(raw,sourceFingerprint=''){
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
 
+/* ピッ！という音を鳴らす関数 */
+function playBeep(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.frequency.value = 1200;
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  }catch(e){}
+}
+
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
   await stopCamera();
-  
   statusText.style.fontWeight = '800';
 
   if(result==='ADDED'){
+    playBeep(); // 成功時に音を鳴らす
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.3em';
     statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
@@ -153,11 +159,10 @@ async function acceptQr(raw,sourceFingerprint=''){
 async function openScanner(){
   if(!dialog.open)dialog.showModal();
   hideScanChoice();
-  
   statusText.style.color = '#333';
   statusText.style.fontSize = '18px';
   statusText.style.fontWeight = '800';
-  statusText.textContent=state.qrList.length?'次のQRコードをカメラに映してください':'QRコードをカメラに映してください';
+  statusText.textContent=state.qrList.length?'次のQRコードを枠内に映してください':'QRコードを枠内に映してください';
   
   if(typeof ZXingBrowser==='undefined'){
     statusText.style.color = '#d40000';
@@ -182,7 +187,10 @@ async function startCamera(){
       if(Array.isArray(caps.focusMode)&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
-      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.5), caps.zoom.max);
+      
+      // ズームを2.5倍に強化
+      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 2.5), caps.zoom.max);
+      
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
     if(state.scanning)state.scanTimer=setTimeout(handleScanTimeout,SCAN_TIMEOUT_MS)
@@ -214,11 +222,9 @@ async function handleScanTimeout(){
   state.scanTimer=null;
   await stopCamera();
   hideScanChoice();
-  
   statusText.style.color = '#d40000';
   statusText.style.fontSize = '1.3em';
   statusText.textContent='読み取れません。ホームに戻ります。';
-  
   state.returnTimer=setTimeout(async()=>{
     state.returnTimer=null;
     await closeScanner();
@@ -241,9 +247,7 @@ function exportCsv(){
   if(!records.length){flash('出力する記録がありません');return}
   const rows=[['処方日','医療機関','診療科','医師名','薬品名','用法','数量']];
   for(const r of records)for(const m of r.medicines)rows.push([r.prescriptionDate,r.hospitalName,r.department,r.doctorName,m.name,m.usage.join(' / '),m.quantityInfo]);
-  
   const csvContent = '\ufeff'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
-  
   download(csvContent,'お薬手帳.csv','text/csv;charset=utf-8');
   flash('「お薬手帳.csv」をダウンロードしました。スマホの「ファイル」アプリや「ダウンロード」フォルダをご確認ください。');
 }
@@ -253,7 +257,7 @@ function importJson(e){const file=e.target.files[0];if(!file)return;const reader
 
 backButton.onclick=()=>state.view==='detail'?navigate('history'):navigate('home');
 document.querySelector('#close-scanner').onclick=closeScanner;
-document.querySelector('#scanner-next').onclick=async()=>{hideScanChoice();statusText.textContent='次のQRコードをカメラに映してください';await startCamera()};
+document.querySelector('#scanner-next').onclick=async()=>{hideScanChoice();statusText.textContent='次のQRコードを枠内に映してください';await startCamera()};
 document.querySelector('#scanner-finish').onclick=finishReading;
 document.querySelector('#scanner-back').onclick=closeScanner;
 dialog.addEventListener('cancel',e=>{e.preventDefault();closeScanner()});
