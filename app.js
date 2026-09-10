@@ -126,7 +126,6 @@ function playBeep(){
 async function acceptQr(raw,sourceFingerprint=''){
   const result=addQrData(raw,sourceFingerprint);
   
-  // ▼ ここが新しい「読み取り済みの場合はカメラを止めない」機能です ▼
   if(result==='DUPLICATE' || result==='PREVIOUS'){
     statusText.style.color = '#d40000';
     statusText.style.fontSize = '1.1em';
@@ -200,8 +199,8 @@ async function startCamera(){
       if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
       if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
       
-      // ▼ ズームをベストな1.3倍に設定 ▼
-      if(caps.zoom) advanced.zoom = Math.min(Math.max(caps.zoom.min, 1.3), caps.zoom.max);
+      // ▼ ズームをカメラの最小値（標準の等倍）に戻します ▼
+      if(caps.zoom) advanced.zoom = caps.zoom.min;
       
       if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
     }catch{}
