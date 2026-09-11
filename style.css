@@ -407,3 +407,29 @@ video {
   gap: 12px;
   margin-top: 24px;
 }
+/* --- 追加・調整したデザイン --- */
+
+/* 1. 中央の2つの大きいボタンの間隔を広げ、文字をさらに見やすく */
+.button-stack.home-actions {
+  gap: 28px; /* ボタン同士の間隔を現在の約2倍に広げる */
+  margin-bottom: 32px;
+}
+
+.button-stack .button {
+  font-size: 26px; /* ボタンの文字を少し大きく */
+  padding: 20px;   /* タッチしやすく高さを確保 */
+}
+
+/* 2. 3つの控えめなボタン（CSV保存など）の枠線を分かりやすく濃い色にする */
+.utility-row .button.ghost {
+  border: 1.5px solid #625b71; /* 枠線を太く、濃い色に変更 */
+  color: #1d1b20;             /* 文字もはっきりした黒に */
+  font-weight: bold;
+}
+
+/* 3. 「使い方・データ保存について」のリンク文字を濃い青色にする */
+.help-link {
+  color: #1565c0; /* よりコントラストが高く見やすい濃い青色（ロイヤルブルー系） */
+  font-size: 16px;
+  margin-top: 12px;
+}

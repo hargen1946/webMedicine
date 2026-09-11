@@ -59,11 +59,51 @@ function saveRecord(record){
 
 function flash(message){toast.textContent=message;toast.classList.add('show');clearTimeout(flash.timer);flash.timer=setTimeout(()=>toast.classList.remove('show'),5000)}
 function navigate(view,selected=null){state.view=view;state.selected=selected;render();app.focus();scrollTo({top:0,behavior:'smooth'})}
-function render(){backButton.classList.toggle('hidden',state.view==='home');headerTitle.textContent=state.view==='home'?'お 薬 手 帳':state.view==='history'?'記録一覧':state.view==='help'?'使い方':'お薬の記録';if(state.view==='home')renderHome();else if(state.view==='history')renderHistory();else if(state.view==='help')renderHelp();else renderDetail(state.selected)}
+// 【修正後の render 関数】
+function render() {
+  // 1. 戻るボタンの表示制御（ホーム画面では隠す）
+  backButton.classList.toggle('hidden', state.view === 'home');
 
+  // 2. ヘッダーのタイトル制御（ホーム画面では文字を空にして非表示にする）
+  if (state.view === 'home') {
+    headerTitle.textContent = '';
+  } else if (state.view === 'history') {
+    headerTitle.textContent = '記録一覧';
+  } else if (state.view === 'help') {
+    headerTitle.textContent = '使い方';
+  } else {
+    headerTitle.textContent = 'お薬の記録';
+  }
+
+  // 3. 各画面の中身を描画する
+  if (state.view === 'home') {
+    renderHome();
+  } else if (state.view === 'history') {
+    renderHistory();
+  } else if (state.view === 'help') {
+    renderHelp();
+  } else {
+    renderDetail(state.selected);
+  }
+}
 function renderHome(){
   const count=state.qrList.length;
-  app.innerHTML=`<section class="hero"><h1>お 薬 手 帳</h1><p>処方箋QRを読み取り、保存します。</p></section>${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}<div class="button-stack home-actions"><button class="button secondary" data-action="history">▤ 記 録 を 見 る</button><button class="button ${count?'orange':'primary'}" data-action="scan">▦ ${count?'次のQRコードを読む':'QRコードを読み取る'}</button>${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}</div>${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}<div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;"><button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button><button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button><label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label></div><button class="help-link" data-action="help">使い方・データ保存について</button>`;
+  app.innerHTML=`
+    <section class="hero"><h1>お 薬 手 帳</h1></section>
+    ${count?`<div class="summary-card"><strong>✓ ${count}件</strong> のQRコードを読み取りました</div>`:''}
+    <div class="button-stack home-actions">
+      <button class="button secondary" data-action="history">記　録　を　見　る</button>
+      <button class="button ${count?'orange':'primary'}" data-action="scan">${count?'次のQRコードを読む':'QRコードを読み取る'}</button>
+      ${count?'<button class="button success wide" data-action="finish">読み取り終了・保存</button>':''}
+    </div>
+    ${state.notice?`<div class="notice">${esc(state.notice)}</div>`:''}
+    <div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;">
+      <button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button>
+      <button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button>
+      <label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label>
+    </div>
+    <button class="help-link" data-action="help">使い方・データ保存について</button>
+  `;
   app.querySelector('[data-action="history"]').onclick=()=>navigate('history');
   app.querySelector('[data-action="scan"]').onclick=openScanner;
   app.querySelector('[data-action="finish"]')?.addEventListener('click',finishReading);
