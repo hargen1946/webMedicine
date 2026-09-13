@@ -449,7 +449,7 @@ video {
 /* 2. カメラ映像の上に「白線のガイド枠」を重ねる */
 .camera-frame {
   position: relative; /* 枠を重ねるための基準点にする */
-}
+}A
 
 .camera-frame::after {
   content: '';

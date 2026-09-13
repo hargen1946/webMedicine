@@ -24,13 +24,16 @@
   </div>
 
   <!-- QRコード読み取り画面 -->
+
   <dialog id="scanner-dialog" class="scanner-dialog">
     <div class="scanner-head">
       <div id="scanner-status">QRコードをカメラに映してください</div>
-      <button id="close-scanner" class="icon-button">×</button>
+      <button id="close-scanner" class="icon-button" aria-label="閉じる">×</button>
     </div>
     <div class="camera-frame">
       <video id="camera-video" playsinline></video>
+      <!-- 白線の枠ガイド（カメラ動作中のみ表示） -->
+      <div id="scan-guide" class="scan-guide"></div>
     </div>
     <div id="scan-choice" class="scan-choice hidden">
       <button id="scanner-next" class="button orange hidden">次のQRコードを読む</button>
@@ -38,6 +41,7 @@
       <button id="scanner-back" class="button secondary hidden">中止してホームへ</button>
     </div>
   </dialog>
+  
 
   <!-- インストール案内画面 -->
   <dialog id="install-guide-dialog" class="install-guide-dialog">

@@ -1,8 +1,8 @@
 'use strict';
 const STORAGE_KEY='medicine-notebook.records.v1';
 const QR_HISTORY_KEY='medicine-notebook.qr-fingerprints.v1';
-const SCAN_TIMEOUT_MS=12000;
-const SCAN_RETURN_DELAY_MS=5000;
+const SCAN_TIMEOUT_MS=6000;
+const SCAN_RETURN_DELAY_MS=4000;
 const state={view:'home',selected:null,qrList:[],qrFingerprints:[],notice:'',stream:null,reader:null,controls:null,scanning:false,scanTimer:null,returnTimer:null};
 const app=document.querySelector('#app');
 const backButton=document.querySelector('#back-button');
@@ -12,7 +12,24 @@ const video=document.querySelector('#camera-video');
 const statusText=document.querySelector('#scanner-status');
 const toast=document.querySelector('#toast');
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-
+// 読み取り成功時の「ピッ」という電子音を鳴らす部品
+function playBeepSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz（高めの心地よい音）
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+  } catch (e) {
+    // 音声再生に対応していない環境でもエラーにしない
+  }
+}
 function getRecords(){
   try{
     const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
@@ -156,78 +173,117 @@ function addQrData(raw,sourceFingerprint=''){
 function showScanChoice(canContinue){document.querySelector('#scan-choice').classList.remove('hidden');document.querySelector('#scanner-next').classList.toggle('hidden',!canContinue);document.querySelector('#scanner-finish').classList.toggle('hidden',state.qrList.length===0);document.querySelector('#scanner-back').classList.toggle('hidden',canContinue||state.qrList.length>0)}
 function hideScanChoice(){document.querySelector('#scan-choice').classList.add('hidden')}
 
-async function acceptQr(raw,sourceFingerprint=''){
-  const result=addQrData(raw,sourceFingerprint);
+async function acceptQr(raw, sourceFingerprint = '') {
+  const result = addQrData(raw, sourceFingerprint);
   await stopCamera();
-  
-  statusText.style.fontWeight = '800';
 
-  if(result==='ADDED'){
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.3em';
-    statusText.innerHTML=`（ <span class="scan-count">${state.qrList.length}</span>件読み取り成功 ）`;
+  // カメラ枠（黒画面）を隠して目障りな四角を消す
+  const cameraFrame = document.querySelector('.camera-frame');
+  if (cameraFrame) {
+    cameraFrame.style.display = 'none';
+  }
+
+  statusText.style.fontWeight = 'bold';
+  statusText.style.fontSize = '22px';
+  statusText.style.padding = '16px 8px';
+
+  if (result === 'ADDED') {
+    if (typeof playBeepSound === 'function') playBeepSound();
+    statusText.style.color = '#1b5e20';
+    statusText.innerHTML = `（ <span class="scan-count" style="font-size:1.3em; color:#d84315;">${state.qrList.length}</span> 件読み取り成功 ）`;
     showScanChoice(true);
-  }else if(result==='MISSING'){
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.3em';
-    statusText.textContent='読み取る順番が違います。やり直してください。';
+  } else if (result === 'MISSING') {
+    statusText.style.color = '#c62828';
+    statusText.textContent = '読み取る順番が違います。やり直してください。';
     showScanChoice(false);
-  }else if(result==='DUPLICATE' || result==='PREVIOUS'){
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.3em';
-    statusText.textContent='読み取り済です。';
-    showScanChoice(result==='DUPLICATE' ? true : state.qrList.length>0);
-  }else if(result==='INVALID'){
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.3em';
-    statusText.textContent='QRコードを正しく読み取れませんでした。もう一度お試しください。';
+  } else if (result === 'DUPLICATE' || result === 'PREVIOUS') {
+    statusText.style.color = '#c62828';
+    statusText.textContent = 'すでに読み取り済みのQRコードです。';
+    showScanChoice(result === 'DUPLICATE' ? true : state.qrList.length > 0);
+  } else if (result === 'INVALID') {
+    statusText.style.color = '#c62828';
+    statusText.textContent = 'QRコードを認識できませんでした。';
     showScanChoice(false);
-  }else{
-    statusText.style.color = '#d40000';
-    statusText.style.fontSize = '1.3em';
-    statusText.textContent='読み取りデータが空です。';
+  } else {
+    statusText.style.color = '#c62828';
+    statusText.textContent = '読み取りデータが空です。';
     showScanChoice(false);
   }
 }
 
-async function openScanner(){
-  if(!dialog.open)dialog.showModal();
+async function openScanner() {
+  if (!dialog.open) dialog.showModal();
   hideScanChoice();
-  
-  statusText.style.color = '#333';
+
+  // 隠していたカメラ枠を再表示する
+  const cameraFrame = document.querySelector('.camera-frame');
+  if (cameraFrame) {
+    cameraFrame.style.display = 'block';
+  }
+
+  statusText.style.color = '#222';
   statusText.style.fontSize = '18px';
-  statusText.style.fontWeight = '800';
-  statusText.textContent=state.qrList.length?'次のQRコードをカメラに映してください':'QRコードをカメラに映してください';
-  
-  if(typeof ZXingBrowser==='undefined'){
-    statusText.style.color = '#d40000';
-    statusText.textContent='ZXing読取機能を読み込めませんでした。画面を再読み込みしてください。';
+  statusText.style.fontWeight = 'bold';
+  statusText.textContent = state.qrList.length ? '次のQRコードを枠に合わせてください' : 'QRコードを枠に合わせてください';
+
+  if (typeof ZXingBrowser === 'undefined') {
+    statusText.style.color = '#c62828';
+    statusText.textContent = '読取機能を読み込めませんでした。再読み込みしてください。';
     return;
   }
   await startCamera();
 }
 
-async function startCamera(){
+async function startCamera() {
   await stopCamera();
-  try{
-    const hints=new Map([[3,true],[4,'Shift_JIS']]);
-    state.reader=new ZXingBrowser.BrowserQRCodeReader(hints,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1000,tryPlayVideoTimeout:8000});
-    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280,min:720},height:{ideal:720,min:480}},audio:false};
-    state.scanning=true;
-    state.controls=await state.reader.decodeFromConstraints(constraints,video,(result)=>{if(!result||!state.scanning)return;state.scanning=false;acceptQr(decodeZxingResult(result),zxingFingerprint(result))});
-    state.stream=video.srcObject;
-    const track=state.stream?.getVideoTracks?.()[0];
-    try{
-      const caps=track?.getCapabilities?.()||{},advanced={};
-      if(Array.isArray(caps.focusMode)&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
-      if(Array.isArray(caps.exposureMode)&&caps.exposureMode.includes('continuous'))advanced.exposureMode='continuous';
-      if(Array.isArray(caps.whiteBalanceMode)&&caps.whiteBalanceMode.includes('continuous'))advanced.whiteBalanceMode='continuous';
-      if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]})
-    }catch{}
-    if(state.scanning)state.scanTimer=setTimeout(handleScanTimeout,SCAN_TIMEOUT_MS)
-  }catch(e){
-    state.scanning=false;
-    statusText.textContent=location.protocol==='https:'?'カメラを使用できません。Chromeのカメラ権限をご確認ください。':'カメラ利用にはHTTPSが必要です。'
+  try {
+    const hints = new Map([[3, true], [4, 'Shift_JIS']]);
+    state.reader = new ZXingBrowser.BrowserQRCodeReader(hints, {
+      delayBetweenScanAttempts: 60,
+      delayBetweenScanSuccess: 1000,
+      tryPlayVideoTimeout: 8000
+    });
+
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 }
+      },
+      audio: false
+    };
+
+    state.scanning = true;
+    state.controls = await state.reader.decodeFromConstraints(constraints, video, (result) => {
+      if (!result || !state.scanning) return;
+      state.scanning = false;
+      acceptQr(decodeZxingResult(result), zxingFingerprint(result));
+    });
+
+    state.stream = video.srcObject;
+    const track = state.stream?.getVideoTracks?.()[0];
+
+    if (track) {
+      try {
+        const caps = track.getCapabilities?.() || {};
+        const advanced = {};
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) advanced.focusMode = 'continuous';
+        if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) advanced.exposureMode = 'continuous';
+
+        // 1.2倍ズームを適用（端末が対応している場合）
+        if (caps.zoom) {
+          const targetZoom = Math.min(Math.max(1.2, caps.zoom.min), caps.zoom.max);
+          advanced.zoom = targetZoom;
+        }
+
+        if (Object.keys(advanced).length) await track.applyConstraints({ advanced: [advanced] });
+      } catch (err) {}
+    }
+
+    if (state.scanning) state.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
+  } catch (e) {
+    state.scanning = false;
+    statusText.textContent = location.protocol === 'https:' ? 'カメラを使用できません。権限をご確認ください。' : 'カメラ利用にはHTTPSが必要です。';
   }
 }
 function zxingFingerprint(result){try{const bytes=result.getRawBytes?.();if(!bytes?.length)return'';let hash=2166136261;for(const byte of bytes){hash^=byte;hash=Math.imul(hash,16777619)}return`raw:${bytes.length}:${hash>>>0}`}catch{return''}}
