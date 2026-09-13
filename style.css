@@ -433,3 +433,34 @@ video {
   font-size: 16px;
   margin-top: 12px;
 }
+/* =========================================
+   カメラ画面（スキャナー）のUI改善追加コード
+   ========================================= */
+
+/* 1. 状態を知らせるメッセージの文字を大きく、太く、見やすくする */
+#scanner-status {
+  font-size: 20px !important;  /* 文字を大きく */
+  font-weight: bold;           /* 太字に */
+  padding: 12px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* 2. カメラ映像の上に「白線のガイド枠」を重ねる */
+.camera-frame {
+  position: relative; /* 枠を重ねるための基準点にする */
+}
+
+.camera-frame::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* ど真ん中に配置 */
+  width: 70%;  /* 枠の横幅（画面の70%） */
+  height: 40%; /* 枠の縦幅（処方箋QRが入りやすい横長） */
+  border: 3px solid rgba(255, 255, 255, 0.8); /* 少しだけ透明な白い太線 */
+  border-radius: 8px; /* 角を少し丸くする */
+  box-shadow: 0 0 10px rgba(0,0,0,0.3); /* 白線が見えやすいように薄い影をつける */
+  pointer-events: none; /* 枠がタッチ操作の邪魔にならないようにする */
+}
