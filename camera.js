@@ -1,15 +1,16 @@
 'use strict';
 
 // スキャナー設定値
-const SCAN_TIMEOUT_MS = 15000;     // 映像表示後、落ち着いて合わせられる15秒に延長
+const SCAN_TIMEOUT_MS = 15000;     // 15秒の猶予
 const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間
+const SCAN_INTERVAL_MS = 120;      // 解析ループの間隔（画面フリーズ防止）
 
 const scannerState = {
   stream: null,
   scanning: false,
   scanTimer: null,
   returnTimer: null,
-  animFrameId: null,
+  loopTimer: null,
   barcodeDetector: null,
   zxingReader: null,
   zxingControls: null
@@ -132,21 +133,22 @@ async function openScanner() {
   await startCamera();
 }
 
-// カメラ起動・認識処理
+// カメラ起動処理
 async function startCamera() {
   await stopCamera();
-  await new Promise(resolve => setTimeout(resolve, 150));
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   const videoEl = document.querySelector('#camera-video');
   const statusEl = document.querySelector('#scanner-status');
   if (!videoEl) return;
 
   try {
+    // 起動を速くするため、まずは素直なHD〜FullHDをリクエスト
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
       },
       audio: false
     };
@@ -155,52 +157,43 @@ async function startCamera() {
     videoEl.srcObject = scannerState.stream;
     await videoEl.play();
 
-    const track = scannerState.stream.getVideoTracks()[0];
+    // 映像が実際に描画されてからスキャンを開始する
+    scannerState.scanning = true;
 
-    // 自然な距離感で合焦する1.4倍ズームとピント追従
-    if (track) {
-      try {
-        const caps = track.getCapabilities?.() || {};
-        const advanced = {};
-
-        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-          advanced.focusMode = 'continuous';
-        }
-        if (caps.zoom) {
-          const targetZoom = Math.min(Math.max(1.4, caps.zoom.min), caps.zoom.max);
-          advanced.zoom = targetZoom;
-        }
-
-        if (Object.keys(advanced).length) {
-          await track.applyConstraints({ advanced: [advanced] });
-        }
-      } catch (err) {}
+    if (statusEl) {
+      statusEl.style.color = '#222';
+      statusEl.textContent = state.qrList.length ? '次のQRコードを枠に合わせてください' : 'QRコードを枠に合わせてください';
     }
 
-    // 映像の準備が完了してからスキャン判定とタイマーを起動
-    videoEl.onloadedmetadata = () => {
-      scannerState.scanning = true;
+    // 15秒の計測タイマーをセット
+    scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
 
-      if (statusEl) {
-        statusEl.style.color = '#222';
-        statusEl.textContent = state.qrList.length ? '次のQRコードを枠に合わせてください' : 'QRコードを枠に合わせてください';
-      }
+    // ズーム（1.3倍）とフォーカスをバックグラウンドで穏やかに適用
+    const track = scannerState.stream.getVideoTracks()[0];
+    if (track) {
+      setTimeout(async () => {
+        try {
+          const caps = track.getCapabilities?.() || {};
+          const advanced = {};
+          if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+            advanced.focusMode = 'continuous';
+          }
+          if (caps.zoom) {
+            advanced.zoom = Math.min(Math.max(1.3, caps.zoom.min), caps.zoom.max);
+          }
+          if (Object.keys(advanced).length) {
+            await track.applyConstraints({ advanced: [advanced] });
+          }
+        } catch (err) {}
+      }, 300);
+    }
 
-      // 映像が映ってから15秒の計測を開始
-      scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
-
-      // エンジンの起動
-      if ('BarcodeDetector' in window) {
-        scannerState.barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
-        runBarcodeDetectorLoop(videoEl);
-      } else if (typeof ZXingBrowser !== 'undefined') {
-        runZxingFallback(videoEl);
-      }
-    };
-
-    // すでにメタデータ取得済みの場合の即時発火
-    if (videoEl.readyState >= HTMLMediaElement.HAVE_METADATA) {
-      videoEl.onloadedmetadata();
+    // 検出エンジンの開始
+    if ('BarcodeDetector' in window) {
+      scannerState.barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+      scheduleBarcodeLoop(videoEl);
+    } else if (typeof ZXingBrowser !== 'undefined') {
+      runZxingFallback(videoEl);
     }
   } catch (e) {
     scannerState.scanning = false;
@@ -210,33 +203,36 @@ async function startCamera() {
   }
 }
 
-// Android ネイティブの BarcodeDetector ループ
-async function runBarcodeDetectorLoop(videoEl) {
+// 画面をフリーズさせない間引きスキャンループ（120ms間隔）
+function scheduleBarcodeLoop(videoEl) {
   if (!scannerState.scanning) return;
 
-  try {
-    if (videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      const barcodes = await scannerState.barcodeDetector.detect(videoEl);
-      if (barcodes && barcodes.length > 0 && scannerState.scanning) {
-        scannerState.scanning = false;
-        const rawValue = barcodes[0].rawValue || '';
-        const fp = typeof qrFingerprint === 'function' ? qrFingerprint(rawValue) : '';
-        acceptQr(rawValue, fp);
-        return;
-      }
-    }
-  } catch (err) {}
+  scannerState.loopTimer = setTimeout(async () => {
+    if (!scannerState.scanning) return;
 
-  if (scannerState.scanning) {
-    scannerState.animFrameId = requestAnimationFrame(() => runBarcodeDetectorLoop(videoEl));
-  }
+    try {
+      if (videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const barcodes = await scannerState.barcodeDetector.detect(videoEl);
+        if (barcodes && barcodes.length > 0 && scannerState.scanning) {
+          scannerState.scanning = false;
+          const rawValue = barcodes[0].rawValue || '';
+          const fp = typeof qrFingerprint === 'function' ? qrFingerprint(rawValue) : '';
+          acceptQr(rawValue, fp);
+          return; // 認識成功時は終了
+        }
+      }
+    } catch (err) {}
+
+    // 次のフレームを予約
+    scheduleBarcodeLoop(videoEl);
+  }, SCAN_INTERVAL_MS);
 }
 
 // ZXing フォールバック
 async function runZxingFallback(videoEl) {
   try {
     const hints = new Map([[4, 'Shift_JIS']]);
-    scannerState.zxingReader = new ZXingBrowser.BrowserQRCodeReader(hints, { delayBetweenScanAttempts: 50 });
+    scannerState.zxingReader = new ZXingBrowser.BrowserQRCodeReader(hints, { delayBetweenScanAttempts: 100 });
     scannerState.zxingControls = await scannerState.zxingReader.decodeFromVideoElement(videoEl, (result) => {
       if (!result || !scannerState.scanning) return;
       scannerState.scanning = false;
@@ -250,12 +246,10 @@ async function runZxingFallback(videoEl) {
 function clearScanTimers() {
   clearTimeout(scannerState.scanTimer);
   clearTimeout(scannerState.returnTimer);
+  clearTimeout(scannerState.loopTimer);
   scannerState.scanTimer = null;
   scannerState.returnTimer = null;
-  if (scannerState.animFrameId) {
-    cancelAnimationFrame(scannerState.animFrameId);
-    scannerState.animFrameId = null;
-  }
+  scannerState.loopTimer = null;
 }
 
 // タイムアウト時の自動復帰
@@ -286,11 +280,6 @@ async function stopCamera() {
   clearScanTimers();
   scannerState.scanning = false;
 
-  const videoEl = document.querySelector('#camera-video');
-  if (videoEl) {
-    videoEl.onloadedmetadata = null;
-  }
-
   try {
     scannerState.zxingControls?.stop();
   } catch {}
@@ -303,6 +292,8 @@ async function stopCamera() {
     });
     scannerState.stream = null;
   }
+
+  const videoEl = document.querySelector('#camera-video');
   if (videoEl && videoEl.srcObject) {
     videoEl.srcObject = null;
   }
