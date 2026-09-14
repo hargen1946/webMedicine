@@ -1,10 +1,9 @@
 'use strict';
 
 // スキャナー設定値
-const SCAN_TIMEOUT_MS = 7000;      // 読み取り待機時間（少し余裕を持たせます）
-const SCAN_RETURN_DELAY_MS = 4000; // ホームへ自動で戻る時間（4秒）
+const SCAN_TIMEOUT_MS = 8000;      // 読み取り待機時間
+const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間
 
-// スキャナー内部の状態管理
 const scannerState = {
   stream: null,
   reader: null,
@@ -33,13 +32,26 @@ function addQrData(raw, sourceFingerprint = '') {
   if (data.length < 20 || !data.includes(',')) return 'INVALID';
 
   const fingerprints = [typeof qrFingerprint === 'function' ? qrFingerprint(data) : '', sourceFingerprint].filter(Boolean);
-  if (fingerprints.some(f => state.qrFingerprints.includes(f)) || state.qrList.some(q => (typeof qrFingerprint === 'function' ? qrFingerprint(q) : '') === fingerprints[0])) return 'DUPLICATE';
+  
+  // 同一セッション内での重複チェック
+  if (fingerprints.some(f => state.qrFingerprints.includes(f)) || state.qrList.some(q => (typeof qrFingerprint === 'function' ? qrFingerprint(q) : '') === fingerprints[0])) {
+    return 'DUPLICATE';
+  }
 
+  // 過去に登録済みの記録との重複チェック
   const storedMatch = matchesStoredQr(data, fingerprints);
   const history = typeof getQrHistory === 'function' ? getQrHistory() : [];
   if (storedMatch && fingerprints.some(f => history.includes(f))) return 'PREVIOUS';
-  if (!state.qrList.length && !data.split('\n').some(l => l.trimStart().startsWith('51,'))) return 'MISSING';
-  if (!state.qrList.length && storedMatch) return 'PREVIOUS';
+
+  // 1件目は必ず医療機関情報（51）で始まる必要がある
+  const isFirstItem = state.qrList.length === 0;
+  const hasHospitalHeader = data.split('\n').some(l => l.trimStart().startsWith('51,'));
+
+  if (isFirstItem && !hasHospitalHeader) {
+    return 'MISSING';
+  }
+
+  if (isFirstItem && storedMatch) return 'PREVIOUS';
 
   state.qrList.push(data);
   state.qrFingerprints.push(...fingerprints);
@@ -66,7 +78,6 @@ function hideScanChoice() {
 
 // QRコード認識時の受付処理
 async function acceptQr(raw, sourceFingerprint = '') {
-  // 多重検知を防ぐため即座にフラグを遮断
   scannerState.scanning = false;
   clearScanTimers();
   await stopCamera();
@@ -75,7 +86,6 @@ async function acceptQr(raw, sourceFingerprint = '') {
   const statusEl = document.querySelector('#scanner-status');
   const cameraFrame = document.querySelector('.camera-frame');
 
-  // 黒画面を隠す
   if (cameraFrame) cameraFrame.style.display = 'none';
   if (!statusEl) return;
 
@@ -86,7 +96,7 @@ async function acceptQr(raw, sourceFingerprint = '') {
     showScanChoice(true);
   } else if (result === 'MISSING') {
     statusEl.style.color = '#c62828';
-    statusEl.textContent = '読み取る順番が違います。やり直してください。';
+    statusEl.textContent = '読み取る順番が違います（1枚目から読み取ってください）。';
     showScanChoice(false);
   } else if (result === 'DUPLICATE' || result === 'PREVIOUS') {
     statusEl.style.color = '#c62828';
@@ -113,7 +123,9 @@ async function openScanner() {
   hideScanChoice();
   if (typeof initAudio === 'function') initAudio();
 
+  // カメラ枠を確実に再表示
   if (cameraFrame) cameraFrame.style.display = 'block';
+
   if (statusEl) {
     statusEl.style.color = '#222';
     statusEl.textContent = state.qrList.length ? '次のQRコードを枠に合わせてください' : 'QRコードを枠に合わせてください';
@@ -129,25 +141,29 @@ async function openScanner() {
   await startCamera();
 }
 
-// カメラを確実に初期化して起動
+// カメラを初期化して起動
 async function startCamera() {
   await stopCamera();
 
-  // ハードウェア解放のための待機インターバル（200ミリ秒）
-  await new Promise(resolve => setTimeout(resolve, 200));
+  // ハードウェア解放のための待機インターバル
+  await new Promise(resolve => setTimeout(resolve, 150));
 
   const videoEl = document.querySelector('#camera-video');
   const statusEl = document.querySelector('#scanner-status');
   if (!videoEl) return;
 
   try {
-    // 処方箋QR用の文字コードヒント（Shift_JIS対応）
-    const hints = new Map([[3, true], [4, 'Shift_JIS']]);
+    // 認識率向上の設定: Shift_JIS対応 ＆ 全探索（TRY_HARDER）有効化
+    const hints = new Map([
+      [2, true],         // TRY_HARDER（多少のテカリや傾きも深く探索して読み取る）
+      [3, true],         // PURE_BARCODE判定の補助
+      [4, 'Shift_JIS']   // 文字コード指定
+    ]);
+
     scannerState.reader = new ZXingBrowser.BrowserQRCodeReader(hints, {
-      delayBetweenScanAttempts: 100
+      delayBetweenScanAttempts: 40 // スキャン頻度を高速化（取りこぼし防止）
     });
 
-    // 過剰なズーム・4K要求を排し、最速合焦の標準HD（1280x720）を指定
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
@@ -159,10 +175,9 @@ async function startCamera() {
 
     scannerState.scanning = true;
 
-    // スキャン制御の開始
     scannerState.controls = await scannerState.reader.decodeFromConstraints(constraints, videoEl, (result) => {
       if (!result || !scannerState.scanning) return;
-      scannerState.scanning = false; // 受付を即ロック
+      scannerState.scanning = false;
 
       const text = typeof decodeZxingResult === 'function' ? decodeZxingResult(result) : result.getText();
       const fp = typeof zxingFingerprint === 'function' ? zxingFingerprint(result) : '';
@@ -171,7 +186,6 @@ async function startCamera() {
 
     scannerState.stream = videoEl.srcObject;
 
-    // タイマーセット
     if (scannerState.scanning) {
       scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
     }
@@ -213,18 +227,16 @@ async function handleScanTimeout() {
   }, SCAN_RETURN_DELAY_MS);
 }
 
-// カメラを完全放電・停止させる安全装置
+// カメラを停止させる安全装置
 async function stopCamera() {
   clearScanTimers();
   scannerState.scanning = false;
 
-  // 1. ZXingの読み取りループを停止
   try {
     scannerState.controls?.stop();
   } catch {}
   scannerState.controls = null;
 
-  // 2. ブラウザのカメラストリームを確実に停止
   if (scannerState.stream) {
     scannerState.stream.getTracks().forEach(track => {
       try { track.stop(); } catch {}
@@ -232,7 +244,6 @@ async function stopCamera() {
     scannerState.stream = null;
   }
 
-  // 3. video要素の接続を完全に切断
   const videoEl = document.querySelector('#camera-video');
   if (videoEl && videoEl.srcObject) {
     try {
