@@ -123,7 +123,6 @@ async function openScanner() {
   hideScanChoice();
   if (typeof initAudio === 'function') initAudio();
 
-  // カメラ枠を確実に再表示
   if (cameraFrame) cameraFrame.style.display = 'block';
 
   if (statusEl) {
@@ -145,7 +144,7 @@ async function openScanner() {
 async function startCamera() {
   await stopCamera();
 
-  // ハードウェア解放のための待機インターバル
+  // ハードウェア解放待機
   await new Promise(resolve => setTimeout(resolve, 150));
 
   const videoEl = document.querySelector('#camera-video');
@@ -153,22 +152,22 @@ async function startCamera() {
   if (!videoEl) return;
 
   try {
-    // 認識率向上の設定: Shift_JIS対応 ＆ 全探索（TRY_HARDER）有効化
+    // 処方箋QR用の文字コードヒント（Shift_JIS対応 ＆ 全探索）
     const hints = new Map([
-      [2, true],         // TRY_HARDER（多少のテカリや傾きも深く探索して読み取る）
-      [3, true],         // PURE_BARCODE判定の補助
+      [2, true],         // TRY_HARDER（微細なパターンを徹底探索）
       [4, 'Shift_JIS']   // 文字コード指定
     ]);
 
     scannerState.reader = new ZXingBrowser.BrowserQRCodeReader(hints, {
-      delayBetweenScanAttempts: 40 // スキャン頻度を高速化（取りこぼし防止）
+      delayBetweenScanAttempts: 50 // 安定したスキャン頻度
     });
 
+    // 高密度QR用に解像度をFull HD（1920x1080）へ設定し微細セルを捉える
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 }
       },
       audio: false
     };
@@ -185,6 +184,24 @@ async function startCamera() {
     });
 
     scannerState.stream = videoEl.srcObject;
+    const track = scannerState.stream?.getVideoTracks?.()[0];
+
+    // スマホカメラのオートフォーカス（ピント追従）を明示的にONにする
+    if (track) {
+      try {
+        const caps = track.getCapabilities?.() || {};
+        const advanced = {};
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+          advanced.focusMode = 'continuous';
+        }
+        if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) {
+          advanced.exposureMode = 'continuous';
+        }
+        if (Object.keys(advanced).length) {
+          await track.applyConstraints({ advanced: [advanced] });
+        }
+      } catch (err) {}
+    }
 
     if (scannerState.scanning) {
       scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
@@ -227,7 +244,7 @@ async function handleScanTimeout() {
   }, SCAN_RETURN_DELAY_MS);
 }
 
-// カメラを停止させる安全装置
+// カメラ停止処理
 async function stopCamera() {
   clearScanTimers();
   scannerState.scanning = false;
