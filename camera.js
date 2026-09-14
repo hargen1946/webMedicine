@@ -1,8 +1,8 @@
 'use strict';
 
 // スキャナー設定値
-const SCAN_TIMEOUT_MS = 8000;      // 読み取り待機時間
-const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間
+const SCAN_TIMEOUT_MS = 8000;      // 読み取り待機時間（8秒）
+const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間（4秒）
 
 const scannerState = {
   stream: null,
@@ -144,7 +144,7 @@ async function openScanner() {
 async function startCamera() {
   await stopCamera();
 
-  // ハードウェア解放待機
+  // ハードウェアの安全な解放待機
   await new Promise(resolve => setTimeout(resolve, 150));
 
   const videoEl = document.querySelector('#camera-video');
@@ -152,22 +152,21 @@ async function startCamera() {
   if (!videoEl) return;
 
   try {
-    // 処方箋QR用の文字コードヒント（Shift_JIS対応 ＆ 全探索）
+    // 認識処理の軽量化：Shift_JIS対応を維持し、重すぎる総当たり探索を外して高速応答させる
     const hints = new Map([
-      [2, true],         // TRY_HARDER（微細なパターンを徹底探索）
-      [4, 'Shift_JIS']   // 文字コード指定
+      [4, 'Shift_JIS']
     ]);
 
     scannerState.reader = new ZXingBrowser.BrowserQRCodeReader(hints, {
-      delayBetweenScanAttempts: 50 // 安定したスキャン頻度
+      delayBetweenScanAttempts: 40 // 高速スキャンループ
     });
 
-    // 高密度QR用に解像度をFull HD（1920x1080）へ設定し微細セルを捉える
+    // 安定して60fpsで回る標準HD解像度を指定
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 720, min: 480 }
       },
       audio: false
     };
@@ -186,17 +185,26 @@ async function startCamera() {
     scannerState.stream = videoEl.srcObject;
     const track = scannerState.stream?.getVideoTracks?.()[0];
 
-    // スマホカメラのオートフォーカス（ピント追従）を明示的にONにする
+    // ピント追従 ＆ 1.2倍ズームの適用
     if (track) {
       try {
         const caps = track.getCapabilities?.() || {};
         const advanced = {};
+
+        // 連続オートフォーカス
         if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
           advanced.focusMode = 'continuous';
         }
         if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) {
           advanced.exposureMode = 'continuous';
         }
+
+        // 1.2倍ズーム（影を落とさずQRコードを大きく捉える）
+        if (caps.zoom) {
+          const targetZoom = Math.min(Math.max(1.2, caps.zoom.min), caps.zoom.max);
+          advanced.zoom = targetZoom;
+        }
+
         if (Object.keys(advanced).length) {
           await track.applyConstraints({ advanced: [advanced] });
         }
