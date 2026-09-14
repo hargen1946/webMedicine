@@ -1,10 +1,10 @@
 'use strict';
 
-// スキャナー専用の設定値
-const SCAN_TIMEOUT_MS = 6000;
-const SCAN_RETURN_DELAY_MS = 4000;
+// スキャナー設定値
+const SCAN_TIMEOUT_MS = 7000;      // 読み取り待機時間（少し余裕を持たせます）
+const SCAN_RETURN_DELAY_MS = 4000; // ホームへ自動で戻る時間（4秒）
 
-// スキャナー専用の独立した状態管理
+// スキャナー内部の状態管理
 const scannerState = {
   stream: null,
   reader: null,
@@ -14,7 +14,7 @@ const scannerState = {
   returnTimer: null
 };
 
-// 重複チェック部品
+// 過去の記録との重複チェック
 function matchesStoredQr(data, fingerprints = []) {
   const records = typeof getRecords === 'function' ? getRecords() : [];
   if (records.some(record => Array.isArray(record.qrFingerprints) && fingerprints.some(f => record.qrFingerprints.includes(f)))) return true;
@@ -26,7 +26,7 @@ function matchesStoredQr(data, fingerprints = []) {
   return medicineNames.length > 0 && records.some(record => medicineNames.every(name => record.medicines.some(m => norm(m.name) === name)));
 }
 
-// 読み取ったデータの受付
+// 読み取ったデータの検証と格納
 function addQrData(raw, sourceFingerprint = '') {
   const data = typeof normalizeQrData === 'function' ? normalizeQrData(raw) : String(raw || '').trim();
   if (!data) return 'EMPTY';
@@ -64,8 +64,9 @@ function hideScanChoice() {
   if (choice) choice.classList.add('hidden');
 }
 
-// スキャン成功時の受付処理
+// QRコード認識時の受付処理
 async function acceptQr(raw, sourceFingerprint = '') {
+  // 多重検知を防ぐため即座にフラグを遮断
   scannerState.scanning = false;
   clearScanTimers();
   await stopCamera();
@@ -74,9 +75,8 @@ async function acceptQr(raw, sourceFingerprint = '') {
   const statusEl = document.querySelector('#scanner-status');
   const cameraFrame = document.querySelector('.camera-frame');
 
-  // カメラ枠を隠して黒い四角形を消去
+  // 黒画面を隠す
   if (cameraFrame) cameraFrame.style.display = 'none';
-
   if (!statusEl) return;
 
   if (result === 'ADDED') {
@@ -103,7 +103,7 @@ async function acceptQr(raw, sourceFingerprint = '') {
   }
 }
 
-// スキャナーを開く
+// スキャナー画面を開く
 async function openScanner() {
   const dialogEl = document.querySelector('#scanner-dialog');
   const statusEl = document.querySelector('#scanner-status');
@@ -113,9 +113,7 @@ async function openScanner() {
   hideScanChoice();
   if (typeof initAudio === 'function') initAudio();
 
-  // カメラ枠を再表示
   if (cameraFrame) cameraFrame.style.display = 'block';
-
   if (statusEl) {
     statusEl.style.color = '#222';
     statusEl.textContent = state.qrList.length ? '次のQRコードを枠に合わせてください' : 'QRコードを枠に合わせてください';
@@ -131,62 +129,52 @@ async function openScanner() {
   await startCamera();
 }
 
-// カメラを起動してQRスキャンを開始する
+// カメラを確実に初期化して起動
 async function startCamera() {
   await stopCamera();
 
+  // ハードウェア解放のための待機インターバル（200ミリ秒）
+  await new Promise(resolve => setTimeout(resolve, 200));
+
   const videoEl = document.querySelector('#camera-video');
   const statusEl = document.querySelector('#scanner-status');
-
-  await new Promise(resolve => setTimeout(resolve, 150));
+  if (!videoEl) return;
 
   try {
+    // 処方箋QR用の文字コードヒント（Shift_JIS対応）
     const hints = new Map([[3, true], [4, 'Shift_JIS']]);
     scannerState.reader = new ZXingBrowser.BrowserQRCodeReader(hints, {
-      delayBetweenScanAttempts: 80,
-      delayBetweenScanSuccess: 1000,
-      tryPlayVideoTimeout: 8000
+      delayBetweenScanAttempts: 100
     });
 
+    // 過剰なズーム・4K要求を排し、最速合焦の標準HD（1280x720）を指定
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
       },
       audio: false
     };
 
     scannerState.scanning = true;
+
+    // スキャン制御の開始
     scannerState.controls = await scannerState.reader.decodeFromConstraints(constraints, videoEl, (result) => {
       if (!result || !scannerState.scanning) return;
-      scannerState.scanning = false;
+      scannerState.scanning = false; // 受付を即ロック
+
       const text = typeof decodeZxingResult === 'function' ? decodeZxingResult(result) : result.getText();
       const fp = typeof zxingFingerprint === 'function' ? zxingFingerprint(result) : '';
       acceptQr(text, fp);
     });
 
     scannerState.stream = videoEl.srcObject;
-    const track = scannerState.stream?.getVideoTracks?.()[0];
 
-    // 1.2倍ズームとピントの自動設定
-    if (track) {
-      try {
-        const caps = track.getCapabilities?.() || {};
-        const advanced = {};
-        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) advanced.focusMode = 'continuous';
-        if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) advanced.exposureMode = 'continuous';
-
-        if (caps.zoom) {
-          const targetZoom = Math.min(Math.max(1.2, caps.zoom.min), caps.zoom.max);
-          advanced.zoom = targetZoom;
-        }
-
-        if (Object.keys(advanced).length) await track.applyConstraints({ advanced: [advanced] });
-      } catch (err) {}
+    // タイマーセット
+    if (scannerState.scanning) {
+      scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
     }
-
-    if (scannerState.scanning) scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
   } catch (e) {
     scannerState.scanning = false;
     if (statusEl) {
@@ -202,6 +190,7 @@ function clearScanTimers() {
   scannerState.returnTimer = null;
 }
 
+// タイムアウト時の自動復帰
 async function handleScanTimeout() {
   if (!scannerState.scanning) return;
   scannerState.scanTimer = null;
@@ -224,31 +213,45 @@ async function handleScanTimeout() {
   }, SCAN_RETURN_DELAY_MS);
 }
 
+// カメラを完全放電・停止させる安全装置
 async function stopCamera() {
   clearScanTimers();
   scannerState.scanning = false;
+
+  // 1. ZXingの読み取りループを停止
   try {
     scannerState.controls?.stop();
   } catch {}
   scannerState.controls = null;
 
-  const videoEl = document.querySelector('#camera-video');
+  // 2. ブラウザのカメラストリームを確実に停止
   if (scannerState.stream) {
-    scannerState.stream.getTracks().forEach(track => track.stop());
+    scannerState.stream.getTracks().forEach(track => {
+      try { track.stop(); } catch {}
+    });
     scannerState.stream = null;
   }
+
+  // 3. video要素の接続を完全に切断
+  const videoEl = document.querySelector('#camera-video');
   if (videoEl && videoEl.srcObject) {
-    videoEl.srcObject.getTracks().forEach(track => track.stop());
+    try {
+      videoEl.srcObject.getTracks().forEach(track => {
+        try { track.stop(); } catch {}
+      });
+    } catch {}
     videoEl.srcObject = null;
   }
 }
 
+// スキャナーダイアログを閉じる
 async function closeScanner() {
   await stopCamera();
   const dialogEl = document.querySelector('#scanner-dialog');
   if (dialogEl && dialogEl.open) dialogEl.close();
 }
 
+// 読み取り完了・保存
 async function finishReading() {
   if (!state.qrList.length) return;
   const record = typeof parsePrescription === 'function' ? parsePrescription(state.qrList.join('\n')) : null;
