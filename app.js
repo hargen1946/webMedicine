@@ -169,9 +169,15 @@ function renderDetail(index) {
 
 // イベントリスナーの登録
 backButton.onclick = () => state.view === 'detail' ? navigate('history') : navigate('home');
-document.querySelector('#close-scanner').onclick = closeScanner;
 document.querySelector('#scanner-next').onclick = async () => {
   hideScanChoice();
+
+  // 1件目で隠したカメラ枠を画面に再表示する
+  const cameraFrame = document.querySelector('.camera-frame');
+  if (cameraFrame) {
+    cameraFrame.style.display = 'block';
+  }
+
   statusText.textContent = '次のQRコードを枠に合わせてください';
   await startCamera();
 };
