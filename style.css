@@ -437,30 +437,59 @@ video {
    カメラ画面（スキャナー）のUI改善追加コード
    ========================================= */
 
-/* 1. 状態を知らせるメッセージの文字を大きく、太く、見やすくする */
-#scanner-status {
-  font-size: 20px !important;  /* 文字を大きく */
-  font-weight: bold;           /* 太字に */
-  padding: 12px;
-  text-align: center;
-  line-height: 1.4;
+/* =========================================
+   カメラ画面（スキャナー）のUI改善
+   ========================================= */
+
+/* 読み取り画面全体の背景 */
+.scanner-dialog {
+  background-color: #ffffff;
 }
 
-/* 2. カメラ映像の上に「白線のガイド枠」を重ねる */
-.camera-frame {
-  position: relative; /* 枠を重ねるための基準点にする */
-}A
+/* 状態メッセージ（大きく、太く、見やすく） */
+#scanner-status {
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  padding: 18px 12px !important;
+  text-align: center;
+  line-height: 1.4;
+  width: 100%;
+}
 
-.camera-frame::after {
-  content: '';
+/* カメラ映像の枠 */
+.camera-frame {
+  position: relative;
+  width: 100%;
+  height: 55vh;
+  background-color: #000;
+  overflow: hidden;
+}
+
+/* カメラ映像 */
+.camera-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 【重要】画面中央に浮かび上がる「白線の枠」 */
+.scan-guide {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%); /* ど真ん中に配置 */
-  width: 70%;  /* 枠の横幅（画面の70%） */
-  height: 40%; /* 枠の縦幅（処方箋QRが入りやすい横長） */
-  border: 3px solid rgba(255, 255, 255, 0.8); /* 少しだけ透明な白い太線 */
-  border-radius: 8px; /* 角を少し丸くする */
-  box-shadow: 0 0 10px rgba(0,0,0,0.3); /* 白線が見えやすいように薄い影をつける */
-  pointer-events: none; /* 枠がタッチ操作の邪魔にならないようにする */
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 50%;
+  border: 4px solid #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.25); /* 枠の外側をほんのり自然に暗くして見やすくする */
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 読み取り成功時の件数強調 */
+.scan-count {
+  font-size: 1.4em;
+  color: #e65100;
+  font-weight: 900;
 }
