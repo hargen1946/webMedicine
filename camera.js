@@ -1,12 +1,9 @@
 'use strict';
 
-// WebAssembly版 ZXing-C++ をESモジュールとして直接インポート
-import { readBarcodes } from 'https://cdn.jsdelivr.net/npm/zxing-wasm@1/dist/reader/index.js';
-
 // スキャナー設定値
 const SCAN_TIMEOUT_MS = 15000;     // 15秒待機
 const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間
-const SCAN_INTERVAL_MS = 120;      // 解析間隔（1秒に約8回）[cite: 1]
+const SCAN_INTERVAL_MS = 120;      // 安定した解析間隔
 
 const scannerState = {
   stream: null,
@@ -152,7 +149,6 @@ async function startCamera() {
   }
 
   try {
-    // 処方箋用高解像度（1080p）[cite: 1]
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
@@ -176,7 +172,7 @@ async function startCamera() {
 
     scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
 
-    // ピント追従とズーム（1.3倍）の穏やかな適用[cite: 1]
+    // ピント追従とズーム（1.3倍）の適用
     const track = scannerState.stream.getVideoTracks()[0];
     if (track) {
       setTimeout(async () => {
@@ -196,7 +192,7 @@ async function startCamera() {
       }, 200);
     }
 
-    // WASM解析ループ開始[cite: 1]
+    // WASM解析ループ開始
     scheduleWasmLoop(videoEl);
 
   } catch (e) {
@@ -207,7 +203,7 @@ async function startCamera() {
   }
 }
 
-// ZXing-C++ WASM 解析ループ[cite: 1]
+// ZXing-C++ WASM 解析ループ
 function scheduleWasmLoop(videoEl) {
   if (!scannerState.scanning) return;
 
@@ -218,11 +214,14 @@ function scheduleWasmLoop(videoEl) {
       const vw = videoEl.videoWidth;
       const vh = videoEl.videoHeight;
 
-      if (vw > 0 && vh > 0) {
+      // グローバルにロードされた ZXingWASM を安全に確認
+      const wasmEngine = window.ZXingWASM;
+
+      if (vw > 0 && vh > 0 && wasmEngine && typeof wasmEngine.readBarcodes === 'function') {
         scannerState.isProcessing = true;
 
         try {
-          // 中央枠（ROI）を切り出して高精細かつ高速に処理[cite: 1]
+          // 中央枠を高精細に切り抜いて処理負荷を抑制
           const cropSize = Math.floor(Math.min(vw, vh) * 0.75);
           const startX = Math.floor((vw - cropSize) / 2);
           const startY = Math.floor((vh - cropSize) / 2);
@@ -238,19 +237,17 @@ function scheduleWasmLoop(videoEl) {
 
           const imageData = scannerState.offscreenCtx.getImageData(0, 0, cropSize, cropSize);
 
-          // ZXing-C++ WASMの精密解析実行[cite: 1]
-          const results = await readBarcodes(imageData, {
+          const results = await wasmEngine.readBarcodes(imageData, {
             formats: ['QRCode'],
-            tryHarder: true,          // 高密度セルの精密探索[cite: 1]
+            tryHarder: true,
             maxNumberOfSymbols: 1,
-            characterSet: 'Shift_JIS' // 処方箋の標準文字コード[cite: 1]
+            characterSet: 'Shift_JIS'
           });
 
           if (results && results.length > 0 && scannerState.scanning) {
             const res = results[0];
             let text = res.text || '';
 
-            // Shift_JIS文字化け対策（バイト配列からの直接復元）[cite: 1]
             if (res.bytes && (!text || text.includes(''))) {
               try {
                 const decoder = new TextDecoder('shift-jis');
@@ -265,7 +262,6 @@ function scheduleWasmLoop(videoEl) {
             }
           }
         } catch (err) {
-          // エラー時は次フレームで自動再試行
         } finally {
           scannerState.isProcessing = false;
         }
@@ -353,13 +349,5 @@ async function finishReading() {
   state.notice = '';
   await closeScanner();
   if (typeof navigate === 'function') navigate('home');
-  if (typeof flash === 'function') flash(saved ? '記録を保存しました' : '普通の処方の記録がすでにあります');
+  if (typeof flash === 'function') flash(saved ? '記録を保存しました' : '同じ処方の記録がすでにあります');
 }
-
-// 他モジュール（app.js等）から参照できるようwindowに公開
-window.openScanner = openScanner;
-window.startCamera = startCamera;
-window.stopCamera = stopCamera;
-window.closeScanner = closeScanner;
-window.hideScanChoice = hideScanChoice;
-window.finishReading = finishReading;
