@@ -53,17 +53,14 @@
     </div>
   </dialog>
 
- <!-- QRコード読み取り用ライブラリ -->
-<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1/dist/iife/full/index.js"></script>
-  
- <!-- 分割した機能モジュール -->
+<!-- QRコード読み取り用ライブラリ (ZXing-C++ Wasm公式バンドル) -->
+  <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1/dist/iife/full/index.js"></script>
+
+  <!-- 分割した機能モジュール（依存関係順に確実に同期実行） -->
   <script src="./audio.js"></script>
   <script src="./storage.js"></script>
   <script src="./parser.js"></script>
-  <!-- camera.js は WebAssembly を import するため type="module" にします -->
-  <script type="module" src="./camera.js"></script>
-
-  <!-- アプリ本体（司令塔） -->
+  <script src="./camera.js"></script>
   <script src="./app.js"></script>
 </body>
-</html> 
+</html>
