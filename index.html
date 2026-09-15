@@ -56,13 +56,14 @@
  <!-- QRコード読み取り用ライブラリ -->
 <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1/dist/iife/full/index.js"></script>
   
-  <!-- 分割した機能モジュール（依存関係順に読み込み） -->
+ <!-- 分割した機能モジュール -->
   <script src="./audio.js"></script>
   <script src="./storage.js"></script>
   <script src="./parser.js"></script>
-  <script src="./camera.js"></script>
-  
+  <!-- camera.js は WebAssembly を import するため type="module" にします -->
+  <script type="module" src="./camera.js"></script>
+
   <!-- アプリ本体（司令塔） -->
   <script src="./app.js"></script>
 </body>
-</html>
+</html> 
