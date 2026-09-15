@@ -3,11 +3,10 @@
 // スキャナー設定値
 const SCAN_TIMEOUT_MS = 15000;     // 15秒待機
 const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間
-const SCAN_INTERVAL_MS = 120;      // 安定した解析間隔[cite: 1]
+const SCAN_INTERVAL_MS = 150;      // 安定した解析間隔
 
 const scannerState = {
   stream: null,
-  worker: null,
   scanning: false,
   isProcessing: false,
   scanTimer: null,
@@ -17,7 +16,7 @@ const scannerState = {
   offscreenCtx: null
 };
 
-// 重複チェック
+// 過去の記録との重複チェック
 function matchesStoredQr(data, fingerprints = []) {
   const records = typeof getRecords === 'function' ? getRecords() : [];
   if (records.some(record => Array.isArray(record.qrFingerprints) && fingerprints.some(f => record.qrFingerprints.includes(f)))) return true;
@@ -144,32 +143,18 @@ async function startCamera() {
   const statusEl = document.querySelector('#scanner-status');
   if (!videoEl) return;
 
-  // オフスクリーンCanvasの初期化[cite: 1]
+  // オフスクリーンCanvasの準備
   if (!scannerState.offscreenCanvas) {
     scannerState.offscreenCanvas = document.createElement('canvas');
     scannerState.offscreenCtx = scannerState.offscreenCanvas.getContext('2d', { willReadFrequently: true });
   }
 
-  // Web Worker の起動[cite: 1]
-  if (!scannerState.worker) {
-    scannerState.worker = new Worker('./qrWorker.js');
-    scannerState.worker.onmessage = (e) => {
-      scannerState.isProcessing = false;
-      if (!scannerState.scanning) return;
-
-      if (e.data && e.data.type === 'SUCCESS' && e.data.text) {
-        acceptQr(e.data.text);
-      }
-    };
-  }
-
   try {
-    // 安定した合焦のため標準FullHDを要求[cite: 1]
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 }
       },
       audio: false
     };
@@ -188,7 +173,7 @@ async function startCamera() {
 
     scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
 
-    // バックグラウンドでピント追従と緩やかなズーム（1.3倍）を安全に適用
+    // ピント追従と緩やかなズーム（1.3倍）の適用
     const track = scannerState.stream.getVideoTracks()[0];
     if (track) {
       setTimeout(async () => {
@@ -209,7 +194,7 @@ async function startCamera() {
     }
 
     // WASMスキャンループの開始
-    scheduleWorkerLoop(videoEl);
+    scheduleDirectWasmLoop(videoEl);
 
   } catch (e) {
     scannerState.scanning = false;
@@ -219,8 +204,8 @@ async function startCamera() {
   }
 }
 
-// 画面を一切固めない非同期Workerループ[cite: 1]
-function scheduleWorkerLoop(videoEl) {
+// ZXing-C++ (WebAssembly) 直接解析ループ
+function scheduleDirectWasmLoop(videoEl) {
   if (!scannerState.scanning) return;
 
   scannerState.loopTimer = setTimeout(async () => {
@@ -230,30 +215,52 @@ function scheduleWorkerLoop(videoEl) {
       const vw = videoEl.videoWidth;
       const vh = videoEl.videoHeight;
 
-      if (vw > 0 && vh > 0) {
-        // 中央枠（ROI）を切り出して高速化（画面中央の60%四方を切り出し）[cite: 1]
-        const cropSize = Math.min(vw, vh) * 0.7;
-        const startX = (vw - cropSize) / 2;
-        const startY = (vh - cropSize) / 2;
-
-        scannerState.offscreenCanvas.width = cropSize;
-        scannerState.offscreenCanvas.height = cropSize;
-
-        scannerState.offscreenCtx.drawImage(
-          videoEl,
-          startX, startY, cropSize, cropSize,
-          0, 0, cropSize, cropSize
-        );
-
-        const imageData = scannerState.offscreenCtx.getImageData(0, 0, cropSize, cropSize);
-
+      if (vw > 0 && vh > 0 && window.ZXingWASM) {
         scannerState.isProcessing = true;
-        // メモリ転送で裏スレッド（Worker）へ送る[cite: 1]
-        scannerState.worker.postMessage({ imageData }, [imageData.data.buffer]);
+
+        try {
+          // 全画面を適正解像度でCanvasに描画（欠けを完全に防止）
+          scannerState.offscreenCanvas.width = vw;
+          scannerState.offscreenCanvas.height = vh;
+          scannerState.offscreenCtx.drawImage(videoEl, 0, 0, vw, vh);
+
+          const imageData = scannerState.offscreenCtx.getImageData(0, 0, vw, vh);
+
+          // C++ WASM による高密度QRコードの深層解析
+          const results = await window.ZXingWASM.readBarcodes(imageData, {
+            formats: ['QRCode'],
+            tryHarder: true,          // 高密度セルの精密探索
+            maxNumberOfSymbols: 1,
+            characterSet: 'Shift_JIS' // JAHIS処方箋文字コード
+          });
+
+          if (results && results.length > 0 && scannerState.scanning) {
+            const res = results[0];
+            let text = res.text || '';
+
+            // Shift_JISデコード化け対策（バイナリ復元）
+            if (res.bytes && (!text || text.includes(''))) {
+              try {
+                const decoder = new TextDecoder('shift-jis');
+                text = decoder.decode(res.bytes);
+              } catch (e) {}
+            }
+
+            if (text) {
+              scannerState.scanning = false;
+              acceptQr(text);
+              return;
+            }
+          }
+        } catch (err) {
+          // 次のフレームで再試行
+        } finally {
+          scannerState.isProcessing = false;
+        }
       }
     }
 
-    scheduleWorkerLoop(videoEl);
+    scheduleDirectWasmLoop(videoEl);
   }, SCAN_INTERVAL_MS);
 }
 
@@ -294,11 +301,6 @@ async function stopCamera() {
   clearScanTimers();
   scannerState.scanning = false;
   scannerState.isProcessing = false;
-
-  if (scannerState.worker) {
-    scannerState.worker.terminate();
-    scannerState.worker = null;
-  }
 
   if (scannerState.stream) {
     scannerState.stream.getTracks().forEach(track => {
