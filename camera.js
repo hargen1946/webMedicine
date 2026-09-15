@@ -1,9 +1,12 @@
 'use strict';
 
+// WebAssembly版 ZXing-C++ をESモジュールとして直接インポート
+import { readBarcodes } from 'https://cdn.jsdelivr.net/npm/zxing-wasm@1/dist/reader/index.js';
+
 // スキャナー設定値
 const SCAN_TIMEOUT_MS = 15000;     // 15秒待機
 const SCAN_RETURN_DELAY_MS = 4000; // ホーム自動復帰時間
-const SCAN_INTERVAL_MS = 150;      // 安定した解析間隔
+const SCAN_INTERVAL_MS = 120;      // 解析間隔（1秒に約8回）[cite: 1]
 
 const scannerState = {
   stream: null,
@@ -143,18 +146,18 @@ async function startCamera() {
   const statusEl = document.querySelector('#scanner-status');
   if (!videoEl) return;
 
-  // オフスクリーンCanvasの準備
   if (!scannerState.offscreenCanvas) {
     scannerState.offscreenCanvas = document.createElement('canvas');
     scannerState.offscreenCtx = scannerState.offscreenCanvas.getContext('2d', { willReadFrequently: true });
   }
 
   try {
+    // 処方箋用高解像度（1080p）[cite: 1]
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       },
       audio: false
     };
@@ -173,7 +176,7 @@ async function startCamera() {
 
     scannerState.scanTimer = setTimeout(handleScanTimeout, SCAN_TIMEOUT_MS);
 
-    // ピント追従と緩やかなズーム（1.3倍）の適用
+    // ピント追従とズーム（1.3倍）の穏やかな適用[cite: 1]
     const track = scannerState.stream.getVideoTracks()[0];
     if (track) {
       setTimeout(async () => {
@@ -193,8 +196,8 @@ async function startCamera() {
       }, 200);
     }
 
-    // WASMスキャンループの開始
-    scheduleDirectWasmLoop(videoEl);
+    // WASM解析ループ開始[cite: 1]
+    scheduleWasmLoop(videoEl);
 
   } catch (e) {
     scannerState.scanning = false;
@@ -204,8 +207,8 @@ async function startCamera() {
   }
 }
 
-// ZXing-C++ (WebAssembly) 直接解析ループ
-function scheduleDirectWasmLoop(videoEl) {
+// ZXing-C++ WASM 解析ループ[cite: 1]
+function scheduleWasmLoop(videoEl) {
   if (!scannerState.scanning) return;
 
   scannerState.loopTimer = setTimeout(async () => {
@@ -215,30 +218,39 @@ function scheduleDirectWasmLoop(videoEl) {
       const vw = videoEl.videoWidth;
       const vh = videoEl.videoHeight;
 
-      if (vw > 0 && vh > 0 && window.ZXingWASM) {
+      if (vw > 0 && vh > 0) {
         scannerState.isProcessing = true;
 
         try {
-          // 全画面を適正解像度でCanvasに描画（欠けを完全に防止）
-          scannerState.offscreenCanvas.width = vw;
-          scannerState.offscreenCanvas.height = vh;
-          scannerState.offscreenCtx.drawImage(videoEl, 0, 0, vw, vh);
+          // 中央枠（ROI）を切り出して高精細かつ高速に処理[cite: 1]
+          const cropSize = Math.floor(Math.min(vw, vh) * 0.75);
+          const startX = Math.floor((vw - cropSize) / 2);
+          const startY = Math.floor((vh - cropSize) / 2);
 
-          const imageData = scannerState.offscreenCtx.getImageData(0, 0, vw, vh);
+          scannerState.offscreenCanvas.width = cropSize;
+          scannerState.offscreenCanvas.height = cropSize;
 
-          // C++ WASM による高密度QRコードの深層解析
-          const results = await window.ZXingWASM.readBarcodes(imageData, {
+          scannerState.offscreenCtx.drawImage(
+            videoEl,
+            startX, startY, cropSize, cropSize,
+            0, 0, cropSize, cropSize
+          );
+
+          const imageData = scannerState.offscreenCtx.getImageData(0, 0, cropSize, cropSize);
+
+          // ZXing-C++ WASMの精密解析実行[cite: 1]
+          const results = await readBarcodes(imageData, {
             formats: ['QRCode'],
-            tryHarder: true,          // 高密度セルの精密探索
+            tryHarder: true,          // 高密度セルの精密探索[cite: 1]
             maxNumberOfSymbols: 1,
-            characterSet: 'Shift_JIS' // JAHIS処方箋文字コード
+            characterSet: 'Shift_JIS' // 処方箋の標準文字コード[cite: 1]
           });
 
           if (results && results.length > 0 && scannerState.scanning) {
             const res = results[0];
             let text = res.text || '';
 
-            // Shift_JISデコード化け対策（バイナリ復元）
+            // Shift_JIS文字化け対策（バイト配列からの直接復元）[cite: 1]
             if (res.bytes && (!text || text.includes(''))) {
               try {
                 const decoder = new TextDecoder('shift-jis');
@@ -253,14 +265,14 @@ function scheduleDirectWasmLoop(videoEl) {
             }
           }
         } catch (err) {
-          // 次のフレームで再試行
+          // エラー時は次フレームで自動再試行
         } finally {
           scannerState.isProcessing = false;
         }
       }
     }
 
-    scheduleDirectWasmLoop(videoEl);
+    scheduleWasmLoop(videoEl);
   }, SCAN_INTERVAL_MS);
 }
 
@@ -341,5 +353,13 @@ async function finishReading() {
   state.notice = '';
   await closeScanner();
   if (typeof navigate === 'function') navigate('home');
-  if (typeof flash === 'function') flash(saved ? '記録を保存しました' : '同じ処方の記録がすでにあります');
+  if (typeof flash === 'function') flash(saved ? '記録を保存しました' : '普通の処方の記録がすでにあります');
 }
+
+// 他モジュール（app.js等）から参照できるようwindowに公開
+window.openScanner = openScanner;
+window.startCamera = startCamera;
+window.stopCamera = stopCamera;
+window.closeScanner = closeScanner;
+window.hideScanChoice = hideScanChoice;
+window.finishReading = finishReading;
