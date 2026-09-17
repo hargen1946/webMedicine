@@ -189,6 +189,27 @@ function syncQrListFromParts() {
   state.qrList = orderedParts().map(part => part.data);
 }
 
+function clearCurrentScan() {
+  state.qrList = [];
+  state.qrFingerprints = [];
+  scannerState.parts = [];
+  state.notice = '';
+}
+
+function saveCurrentScanRecord() {
+  if (!state.qrList.length) return { ok: false, saved: false };
+  if (scannerState.parts.length) syncQrListFromParts();
+  const record = typeof parsePrescription === 'function' ? parsePrescription(state.qrList.join('\n')) : null;
+  if (!record || !record.medicines.length) return { ok: false, saved: false };
+
+  const readFingerprints = [...new Set(state.qrFingerprints)];
+  record.qrFingerprints = readFingerprints;
+  const saved = typeof saveRecord === 'function' ? saveRecord(record) : false;
+  if (typeof rememberQrFingerprints === 'function') rememberQrFingerprints(readFingerprints);
+  clearCurrentScan();
+  return { ok: true, saved };
+}
+
 function scanProgress() {
   const sequenced = scannerState.parts.filter(part =>
     Number.isInteger(part.sequenceSize) && part.sequenceSize > 1 &&
@@ -301,9 +322,27 @@ async function acceptQr(scanResult) {
     const progress = scanProgress();
     showScanChoice(result === 'DUPLICATE' && progress.canContinue, progress.canFinish);
   } else if (result === 'DIFFERENT') {
+    const currentProgress = scanProgress();
+    if (currentProgress.canFinish) {
+      const previous = saveCurrentScanRecord();
+      const nextResult = previous.ok ? addQrData(scanResult) : 'INVALID';
+      if (nextResult === 'ADDED') {
+        if (typeof playBeepSound === 'function') playBeepSound();
+        const nextProgress = scanProgress();
+        statusEl.style.color = '#1b5e20';
+        statusEl.innerHTML = `${previous.saved ? '前の処方箋を保存しました。' : '前の処方箋は保存済みでした。'}<br>` +
+          (nextProgress.expected
+            ? `新しい処方箋：<span class="scan-count">${nextProgress.count}</span> / ${nextProgress.expected} 枚読み取り成功`
+            : '新しい処方箋：1枚読み取り成功');
+        showScanChoice(nextProgress.canContinue, nextProgress.canFinish);
+        return;
+      }
+    }
+
     statusEl.style.color = '#c62828';
-    statusEl.textContent = '別の処方箋のQRです。現在の処方箋を先に「読み取り終了・保存」してください。';
-    showScanChoice(false, state.qrList.length > 0);
+    statusEl.textContent = '別の処方箋のQRです。現在の分割QRがまだ揃っていないため、続きのQRを読み取ってください。';
+    const progress = scanProgress();
+    showScanChoice(progress.canContinue, progress.canFinish);
   } else {
     statusEl.style.color = '#c62828';
     statusEl.textContent = '処方箋のQRデータとして認識できませんでした。';
@@ -544,24 +583,13 @@ async function scanQrImageFile(file) {
 
 async function finishReading() {
   if (!state.qrList.length) return;
-  syncQrListFromParts();
-  const record = typeof parsePrescription === 'function' ? parsePrescription(state.qrList.join('\n')) : null;
   const statusEl = document.querySelector('#scanner-status');
-
-  if (!record || !record.medicines.length) {
+  const outcome = saveCurrentScanRecord();
+  if (!outcome.ok) {
     if (statusEl) statusEl.textContent = 'お薬の情報を読み取れませんでした。残りのQRコードがないかご確認ください。';
     return;
   }
-
-  const readFingerprints = [...new Set(state.qrFingerprints)];
-  record.qrFingerprints = readFingerprints;
-  const saved = typeof saveRecord === 'function' ? saveRecord(record) : false;
-  if (typeof rememberQrFingerprints === 'function') rememberQrFingerprints(readFingerprints);
-  state.qrList = [];
-  state.qrFingerprints = [];
-  scannerState.parts = [];
-  state.notice = '';
   await closeScanner();
   if (typeof navigate === 'function') navigate('home');
-  if (typeof flash === 'function') flash(saved ? '記録を保存しました' : '同じ処方の記録がすでにあります');
+  if (typeof flash === 'function') flash(outcome.saved ? '記録を保存しました' : '同じ処方の記録がすでにあります');
 }

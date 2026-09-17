@@ -10,6 +10,11 @@ const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 
 assert.match(html, /id=["']toast["']/i, '通知欄がindex.htmlに必要です');
 assert.match(app, /if \(!toast\) return;/, '通知欄がなくても主要処理を止めない必要があります');
-assert.match(app, /navigate\('history'\);\s*flash\('記録を削除しました'\);/, '削除後は通知より先に一覧へ戻ります');
+assert.doesNotMatch(app, /navigate\('history'\);\s*flash\('記録を削除しました'\);/, '削除後の通知を二重表示しません');
+assert.match(
+  app,
+  /function renderHistory[\s\S]*history-home-button[\s\S]*function renderDetail/,
+  '記録一覧のホームボタンに専用スタイルが必要です'
+);
 
 console.log('ui structure tests: ok');

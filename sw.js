@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'medicine-notebook-v7';
+const CACHE_NAME = 'medicine-notebook-v8';
 const APP_SHELL = [
   './',
   './index.html',

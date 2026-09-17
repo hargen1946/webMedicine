@@ -201,7 +201,7 @@ main {
 }
 
 .toast.show {
-  bottom: 24px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 /* カメラ読み取り画面のダイアログ */
@@ -367,6 +367,15 @@ video {
   max-width: 400px;
   margin-top: auto;
   padding-top: 32px;
+}
+
+.history-home-button {
+  min-height: 52px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-size: 16px;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
 }
 
 /* ヘルプ画面 */

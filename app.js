@@ -129,7 +129,7 @@ function renderHistory() {
         <div class="record-doctor">${esc([r.department, r.doctorName && r.doctorName + ' 先生'].filter(Boolean).join(' '))}</div>
         <div class="record-meta">お薬 ${r.medicines.length}件</div>
       </button>`).join('')}</div>` : '<div class="empty">保存された記録はまだありません。</div>'}
-    <div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>
+    <div class="bottom-actions"><button class="button secondary history-home-button" data-action="home">ホームへ戻る</button></div>
   `;
   app.querySelectorAll('.record-card').forEach(b => b.onclick = () => navigate('detail', Number(b.dataset.index)));
   app.querySelector('[data-action="home"]').onclick = () => navigate('home');
@@ -190,7 +190,6 @@ function renderDetail(index) {
       rebuildQrHistory(records);
       state.historyNotice = '記録を削除しました。';
       navigate('history');
-      flash('記録を削除しました');
     } catch {
       confirmation.classList.add('hidden');
       deleteButton.classList.remove('hidden');
