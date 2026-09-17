@@ -24,6 +24,8 @@ const esc = s => String(s ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': 
 
 // トースト通知の表示
 function flash(message) {
+  // 古いキャッシュのHTMLに通知欄がない場合でも、主要処理を止めない。
+  if (!toast) return;
   toast.textContent = message;
   toast.classList.add('show');
   clearTimeout(flash.timer);
@@ -187,8 +189,8 @@ function renderDetail(index) {
       writeRecords(records);
       rebuildQrHistory(records);
       state.historyNotice = '記録を削除しました。';
-      flash('記録を削除しました');
       navigate('history');
+      flash('記録を削除しました');
     } catch {
       confirmation.classList.add('hidden');
       deleteButton.classList.remove('hidden');
