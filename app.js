@@ -177,12 +177,23 @@ document.querySelector('#scanner-next').onclick = async () => {
   if (cameraFrame) {
     cameraFrame.style.display = 'block';
   }
+  setScannerToolsVisible(true);
 
   statusText.textContent = '次のQRコードを枠に合わせてください';
   await startCamera();
 };
 document.querySelector('#scanner-finish').onclick = finishReading;
 document.querySelector('#scanner-back').onclick = closeScanner;
+document.querySelector('#close-scanner').onclick = closeScanner;
+document.querySelector('#scanner-file').onclick = () => {
+  document.querySelector('#qr-image-input').click();
+};
+document.querySelector('#qr-image-input').onchange = async event => {
+  const input = event.currentTarget;
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) await scanQrImageFile(file);
+};
 dialog.addEventListener('cancel', e => {
   e.preventDefault();
   closeScanner();

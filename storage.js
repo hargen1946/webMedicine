@@ -61,9 +61,24 @@ function score(r) {
          r.medicines.reduce((n, m) => n + (m.name ? 5 : 0) + m.usage.filter(Boolean).length * 2 + (m.quantityInfo ? 3 : 0), 0);
 }
 
+function sameRecord(first, second) {
+  const firstFingerprints = Array.isArray(first.qrFingerprints) ? first.qrFingerprints : [];
+  const secondFingerprints = Array.isArray(second.qrFingerprints) ? second.qrFingerprints : [];
+  if (firstFingerprints.some(value => secondFingerprints.includes(value))) return true;
+
+  const firstMedicines = (first.medicines || []).map(medicine => norm(medicine.name)).filter(Boolean).sort();
+  const secondMedicines = (second.medicines || []).map(medicine => norm(medicine.name)).filter(Boolean).sort();
+  if (!firstMedicines.length || firstMedicines.length !== secondMedicines.length) return false;
+
+  return norm(first.prescriptionDate) === norm(second.prescriptionDate) &&
+    norm(first.hospitalName) === norm(second.hospitalName) &&
+    norm(first.doctorName) === norm(second.doctorName) &&
+    firstMedicines.every((name, index) => name === secondMedicines[index]);
+}
+
 function saveRecord(record) {
   const records = getRecords();
-  const i = records.findIndex(r => norm(r.prescriptionDate) === norm(record.prescriptionDate) && norm(r.hospitalName) === norm(record.hospitalName));
+  const i = records.findIndex(saved => sameRecord(saved, record));
   if (i >= 0) {
     if (score(record) <= score(records[i])) return false;
     records[i] = record;

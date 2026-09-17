@@ -1,22 +1,66 @@
 'use strict';
 
-// 開発用サービスワーカー：キャッシュを持たず、常に最新のファイルを直接読み込む設定
+const CACHE_NAME = 'medicine-notebook-v4';
+const APP_SHELL = [
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './audio.js',
+  './camera.js',
+  './parser.js',
+  './storage.js',
+  './qrWorker.js',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-512.png',
+  './vendor/zxing-wasm/index.js',
+  './vendor/zxing-wasm/zxing_reader.wasm'
+];
 
-// インストール時は待たずに即座に有効化する
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 
-// 起動時に古いキャッシュがもし残っていれば全て消去する
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.map((key) => caches.delete(key)));
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
 });
 
-// 通信時：キャッシュを介さず、常にネットワーク（最新のGitHub）へ直接取りに行く
-self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then(cached => {
+      const update = fetch(request)
+        .then(response => {
+          if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => cached);
+      return cached || update;
+    })
+  );
 });

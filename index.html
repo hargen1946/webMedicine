@@ -35,6 +35,11 @@
       <!-- 白線の枠ガイド（カメラ動作中のみ表示） -->
       <div id="scan-guide" class="scan-guide"></div>
     </div>
+    <div id="scanner-tools" class="scanner-tools">
+      <button id="scanner-file" class="button secondary" type="button">QR画像から読み取る</button>
+      <input id="qr-image-input" class="hidden" type="file" accept="image/*">
+      <p class="scanner-tip">枠いっぱいにせず、QRコードの周囲に少し余白が見える距離で静止してください。</p>
+    </div>
     <div id="scan-choice" class="scan-choice hidden">
       <button id="scanner-next" class="button orange hidden">次のQRコードを読む</button>
       <button id="scanner-finish" class="button success hidden">読み取り終了・保存</button>
@@ -53,8 +58,8 @@
     </div>
   </dialog>
 
-<!-- QRコード読み取り用ライブラリ (ZXing-C++ Wasm公式バンドル) -->
-  <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1/dist/iife/full/index.js"></script>
+<!-- QRコード読み取り用ライブラリ (ZXing-C++ Wasm公式 reader バンドル) -->
+  <script src="./vendor/zxing-wasm/index.js"></script>
 
   <!-- 分割した機能モジュール（依存関係順に確実に同期実行） -->
   <script src="./audio.js"></script>
