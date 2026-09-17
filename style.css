@@ -157,6 +157,11 @@ main {
   border-color: var(--danger);
 }
 
+.button.danger-solid {
+  background-color: var(--danger);
+  color: #fff;
+}
+
 /* 3つ並んだボタンの行 */
 .utility-row {
   width: 100%;
@@ -324,6 +329,37 @@ video {
 .record-doctor, .record-meta {
   color: var(--secondary);
   font-size: 14px;
+}
+
+.history-notice {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 2px solid var(--success);
+  border-radius: 10px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-weight: bold;
+  text-align: center;
+}
+
+.delete-confirmation {
+  margin-top: 12px;
+  padding: 16px;
+  border: 2px solid var(--danger);
+  border-radius: 12px;
+  background: #fff5f5;
+  text-align: center;
+}
+
+.delete-confirmation p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.delete-confirmation .button + .button {
+  margin-top: 10px;
 }
 
 .bottom-actions {

@@ -6,7 +6,8 @@ const state = {
   selected: null,
   qrList: [],
   qrFingerprints: [],
-  notice: ''
+  notice: '',
+  historyNotice: ''
 };
 
 // 主要なDOM要素の参照
@@ -113,8 +114,11 @@ function renderHelp() {
 // 記録一覧画面の描画
 function renderHistory() {
   const records = getRecords();
+  const historyNotice = state.historyNotice;
+  state.historyNotice = '';
   app.innerHTML = `
     <h1 class="page-title">記録を見る</h1>
+    ${historyNotice ? `<div class="history-notice" role="status">${esc(historyNotice)}</div>` : ''}
     <p class="page-subtitle">見たい記録を選んでください</p>
     ${records.length ? `<div class="record-list">${records.map((r, i) => `
       <button class="record-card" data-index="${i}">
@@ -152,17 +156,43 @@ function renderDetail(index) {
     <div class="bottom-actions">
       <button class="button secondary" data-action="back">記録一覧へ戻る</button>
       <button class="button ghost danger" data-action="delete">この記録を削除</button>
+      <div id="delete-confirmation" class="delete-confirmation hidden" role="alert">
+        <p>この記録を削除しますか？<br><strong>削除後は元に戻せません。</strong></p>
+        <button class="button danger-solid" data-action="confirm-delete">削除して一覧へ戻る</button>
+        <button class="button secondary" data-action="cancel-delete">キャンセル</button>
+      </div>
     </div>
   `;
   app.querySelector('[data-action="back"]').onclick = () => navigate('history');
-  app.querySelector('[data-action="delete"]').onclick = () => {
-    if (confirm('この記録を本当に削除しますか？\n削除後は元に戻せません。')) {
+  const deleteButton = app.querySelector('[data-action="delete"]');
+  const confirmation = app.querySelector('#delete-confirmation');
+  const confirmDeleteButton = app.querySelector('[data-action="confirm-delete"]');
+  const cancelDeleteButton = app.querySelector('[data-action="cancel-delete"]');
+
+  deleteButton.onclick = () => {
+    deleteButton.classList.add('hidden');
+    confirmation.classList.remove('hidden');
+    confirmDeleteButton.focus();
+  };
+  cancelDeleteButton.onclick = () => {
+    confirmation.classList.add('hidden');
+    deleteButton.classList.remove('hidden');
+    deleteButton.focus();
+  };
+  confirmDeleteButton.onclick = () => {
+    try {
       const records = getRecords();
-      records.splice(index, 1);
+      const removed = records.splice(index, 1);
+      if (!removed.length) throw new Error('削除対象が見つかりません');
       writeRecords(records);
       rebuildQrHistory(records);
+      state.historyNotice = '記録を削除しました。';
       flash('記録を削除しました');
       navigate('history');
+    } catch {
+      confirmation.classList.add('hidden');
+      deleteButton.classList.remove('hidden');
+      flash('記録を削除できませんでした');
     }
   };
 }
