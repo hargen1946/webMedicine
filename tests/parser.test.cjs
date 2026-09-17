@@ -52,4 +52,44 @@ assert.equal(notebook.medicines.length, 2);
 assert.equal(notebook.medicines[0].quantityInfo, '6C・5日分');
 assert.equal(notebook.medicines[1].quantityInfo, '6錠・5日分');
 
+const otherPrintedPrescription = printedPrescription
+  .replace('1234567,13,テスト病院', '7654321,13,別の病院')
+  .replace('20260410', '20260411');
+
+assert.equal(
+  context.canAppendPrescriptionQrPart(
+    [{ data: printedPrescription, sequenceSize: -1, sequenceIndex: -1, sequenceId: '' }],
+    { data: otherPrintedPrescription, sequenceSize: -1, sequenceIndex: -1, sequenceId: '' }
+  ),
+  false,
+  '別の医療機関・処方日のQRは連結しない'
+);
+
+const splitFirst = {
+  data: printedPrescription,
+  sequenceSize: 2,
+  sequenceIndex: 0,
+  sequenceId: '42'
+};
+const splitSecond = {
+  data: '201,2,1,1,1,,追加薬,1,1,錠',
+  sequenceSize: 2,
+  sequenceIndex: 1,
+  sequenceId: '42'
+};
+assert.equal(context.canAppendPrescriptionQrPart([splitFirst], splitSecond), true);
+assert.equal(
+  context.canAppendPrescriptionQrPart([splitFirst], { ...splitSecond, sequenceId: '99' }),
+  false,
+  '別の構造化連結IDは連結しない'
+);
+assert.equal(
+  context.canAppendPrescriptionQrPart(
+    [{ data: printedPrescription, sequenceSize: -1, sequenceIndex: -1, sequenceId: '' }],
+    splitFirst
+  ),
+  false,
+  '1枚完結QRと分割QRは連結しない'
+);
+
 console.log('parser tests: ok');

@@ -87,7 +87,7 @@ self.onmessage = async event => {
         fingerprint: fingerprint(found.bytes),
         sequenceSize: Number.isInteger(found.sequenceSize) ? found.sequenceSize : -1,
         sequenceIndex: Number.isInteger(found.sequenceIndex) ? found.sequenceIndex : -1,
-        sequenceId: String(found.sequenceId || '')
+        sequenceId: String(found.sequenceId ?? '')
       }
     });
   } catch (error) {

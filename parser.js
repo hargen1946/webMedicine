@@ -45,6 +45,96 @@ function parsePrescription(data) {
     : parseMedicineNotebook(records);
 }
 
+// 複数のQRを同じ処方箋として連結できるかを判定する。
+// 分割QRの後半には医療機関情報が含まれない場合があるため、
+// 両方に存在する識別項目だけを比較する。
+function prescriptionPartIdentity(data) {
+  const lines = rebuildLines(data);
+  const records = lines.map(line => line.split(',').map(value => value.trim()));
+  const header = records.find(parts => /^JAHIS/i.test(parts[0] || ''))?.[0] || '';
+  let format = '';
+
+  if (/^JAHISTC/i.test(header)) {
+    format = 'notebook';
+  } else if (/^JAHIS\d/i.test(header)) {
+    format = 'printed';
+  } else if (records.some(parts =>
+    parts[0] === '101' || parts[0] === '111' || parts[0] === '181' ||
+    (parts[0] === '51' && /^\d{7,8}$/.test(parts[1] || ''))
+  )) {
+    format = 'printed';
+  } else if (records.some(parts =>
+    parts[0] === '281' || parts[0] === '301' || parts[0] === '311' ||
+    (parts[0] === '51' && !/^\d{7,8}$/.test(parts[1] || ''))
+  )) {
+    format = 'notebook';
+  }
+
+  let prescriptionDate = '';
+  let organization = '';
+  let doctor = '';
+
+  for (const parts of records) {
+    if (format === 'printed') {
+      if (parts[0] === '1') organization = [parts[2], parts[3], parts[4]].filter(Boolean).join('|');
+      if (parts[0] === '5') doctor = parts[3] || parts[2] || doctor;
+      if (parts[0] === '51') prescriptionDate = parts[1] || prescriptionDate;
+    } else if (format === 'notebook') {
+      if (parts[0] === '5') prescriptionDate = parts[1] || prescriptionDate;
+      if (parts[0] === '51') organization = [parts[1], parts[4]].filter(Boolean).join('|');
+      if (parts[0] === '55') doctor = parts[1] || doctor;
+    }
+  }
+
+  const normalizeIdentity = value => String(value || '')
+    .normalize('NFKC')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+
+  return {
+    format,
+    prescriptionDate: normalizeIdentity(prescriptionDate),
+    organization: normalizeIdentity(organization),
+    doctor: normalizeIdentity(doctor)
+  };
+}
+
+function prescriptionIdentitiesConflict(first, second) {
+  if (first.format && second.format && first.format !== second.format) return true;
+  return ['prescriptionDate', 'organization', 'doctor'].some(key =>
+    first[key] && second[key] && first[key] !== second[key]
+  );
+}
+
+function structuredQrPart(part) {
+  return Number.isInteger(part?.sequenceSize) && part.sequenceSize > 1 &&
+    Number.isInteger(part?.sequenceIndex) && part.sequenceIndex >= 0;
+}
+
+function canAppendPrescriptionQrPart(existingParts, incomingPart) {
+  if (!Array.isArray(existingParts) || !existingParts.length) return true;
+
+  const sequenced = existingParts.filter(structuredQrPart);
+  const incomingSequenced = structuredQrPart(incomingPart);
+
+  // 連結QRの構造化連結情報がある場合、同じ組だけを受け付ける。
+  if (sequenced.length || incomingSequenced) {
+    if (!sequenced.length || !incomingSequenced) return false;
+    const reference = sequenced[0];
+    if (reference.sequenceSize !== incomingPart.sequenceSize) return false;
+    if (reference.sequenceId && incomingPart.sequenceId && reference.sequenceId !== incomingPart.sequenceId) {
+      return false;
+    }
+    if (sequenced.some(part =>
+      part.sequenceIndex === incomingPart.sequenceIndex && part.data !== incomingPart.data
+    )) return false;
+  }
+
+  const existingIdentity = prescriptionPartIdentity(existingParts.map(part => part.data).join('\n'));
+  const incomingIdentity = prescriptionPartIdentity(incomingPart?.data || '');
+  return !prescriptionIdentitiesConflict(existingIdentity, incomingIdentity);
+}
+
 // JAHIS院外処方箋2次元シンボル（JAHIS9/JAHIS10等）
 function parsePrintedPrescription(records) {
   let prescriptionDate = '';
