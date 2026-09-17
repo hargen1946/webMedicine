@@ -311,8 +311,8 @@ async function acceptQr(scanResult) {
     const progress = scanProgress();
     statusEl.style.color = '#1b5e20';
     statusEl.innerHTML = progress.expected
-      ? `（ <span class="scan-count">${progress.count}</span> / ${progress.expected} 枚読み取り成功 ）`
-      : `（ <span class="scan-count">${state.qrList.length}</span> 枚読み取り成功 ）`;
+      ? `（ <span class="scan-count">${progress.count}</span> / ${progress.expected} 件読み取り成功 ）`
+      : `（ <span class="scan-count">${state.qrList.length}</span> 件読み取り成功 ）`;
     showScanChoice(progress.canContinue, progress.canFinish);
   } else if (result === 'DUPLICATE' || result === 'PREVIOUS') {
     statusEl.style.color = '#c62828';
@@ -332,8 +332,8 @@ async function acceptQr(scanResult) {
         statusEl.style.color = '#1b5e20';
         statusEl.innerHTML = `${previous.saved ? '前の処方箋を保存しました。' : '前の処方箋は保存済みでした。'}<br>` +
           (nextProgress.expected
-            ? `新しい処方箋：<span class="scan-count">${nextProgress.count}</span> / ${nextProgress.expected} 枚読み取り成功`
-            : '新しい処方箋：1枚読み取り成功');
+            ? `新しい処方箋：<span class="scan-count">${nextProgress.count}</span> / ${nextProgress.expected} 件読み取り成功`
+            : '新しい処方箋：1件読み取り成功');
         showScanChoice(nextProgress.canContinue, nextProgress.canFinish);
         return;
       }

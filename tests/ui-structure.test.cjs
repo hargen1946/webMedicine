@@ -16,5 +16,7 @@ assert.match(
   /function renderHistory[\s\S]*history-home-button[\s\S]*function renderDetail/,
   '記録一覧のホームボタンに専用スタイルが必要です'
 );
+assert.match(app, /← ホーム/, '一覧上部にホームへ戻る表示が必要です');
+assert.match(app, /← 記録一覧/, '詳細上部に記録一覧へ戻る表示が必要です');
 
 console.log('ui structure tests: ok');

@@ -45,6 +45,13 @@ function navigate(view, selected = null) {
 function render() {
   // 1. 戻るボタンの表示制御
   backButton.classList.toggle('hidden', state.view === 'home');
+  if (state.view === 'detail') {
+    backButton.textContent = '← 記録一覧';
+    backButton.setAttribute('aria-label', '記録一覧へ戻る');
+  } else {
+    backButton.textContent = '← ホーム';
+    backButton.setAttribute('aria-label', 'ホームへ戻る');
+  }
 
   // 2. ヘッダータイトルの制御
   if (state.view === 'home') {
