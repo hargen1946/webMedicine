@@ -106,7 +106,7 @@ function getDecodeWorker() {
   if (scannerState.worker) return scannerState.worker;
 
   try {
-    const worker = new Worker('./qrWorker.js?v=10');
+    const worker = new Worker('./qrWorker.js?v=11');
     worker.onmessage = event => {
       const { requestId, type, result, error } = event.data || {};
       const pending = scannerState.pendingRequests.get(requestId);
@@ -331,9 +331,7 @@ async function acceptQr(scanResult) {
         const nextProgress = scanProgress();
         statusEl.style.color = '#1b5e20';
         statusEl.innerHTML = `${previous.saved ? '前の処方箋を保存しました。' : '前の処方箋は保存済みでした。'}<br>` +
-          (nextProgress.expected
-            ? `新しい処方箋：<span class="scan-count">${nextProgress.count}</span> / ${nextProgress.expected} 件読み取り成功`
-            : '新しい処方箋：1件読み取り成功');
+          '別の処方箋の1件目を読み取りました。';
         showScanChoice(nextProgress.canContinue, nextProgress.canFinish);
         return;
       }

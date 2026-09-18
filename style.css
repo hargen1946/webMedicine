@@ -495,7 +495,7 @@ video {
 /* 1. 中央の2つの大きいボタンの間隔を広げ、文字をさらに見やすく */
 .button-stack.home-actions {
   gap: 28px; /* ボタン同士の間隔を現在の約2倍に広げる */
-  margin-bottom: 32px;
+  margin-bottom: 44px; /* QR読み取りボタンと下の3ボタンの間を広げる */
 }
 
 .button-stack .button {
@@ -514,7 +514,7 @@ video {
 .help-link {
   color: #1565c0; /* よりコントラストが高く見やすい濃い青色（ロイヤルブルー系） */
   font-size: 16px;
-  margin-top: 12px;
+  margin-top: 6px; /* 3ボタンと説明文の間を少し狭くする */
 }
 /* =========================================
    カメラ画面（スキャナー）のUI改善追加コード

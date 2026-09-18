@@ -20,6 +20,12 @@ assert.match(
 );
 assert.match(app, /← ホーム/, '一覧上部にホームへ戻る表示が必要です');
 assert.match(app, /← 記録一覧/, '詳細上部に記録一覧へ戻る表示が必要です');
+assert.match(app, /上の3個のボタンの説明/, 'ホームに3個の補助ボタンの説明リンクが必要です');
+assert.match(app, /data-action="delete">この記録を削除する/, '説明書と同じ削除ボタン名が必要です');
+assert.doesNotMatch(app, /data-action="help">使い方・データ保存について/, 'ホームの説明リンクは3個のボタンを明示します');
+assert.match(camera, /前の処方箋を保存しました。/, '前の処方箋を保存した案内が必要です');
+assert.match(camera, /別の処方箋の1件目を読み取りました。/, '別の処方箋の1件目を読み取った案内が必要です');
+assert.doesNotMatch(camera, /新しい処方箋：/, '別の処方箋という統一表記を使います');
 
 const assetVersion = serviceWorker.match(/CACHE_NAME = 'medicine-notebook-v(\d+)'/)?.[1];
 assert.ok(assetVersion, 'サービスワーカーのキャッシュ番号が必要です');

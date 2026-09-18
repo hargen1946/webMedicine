@@ -93,7 +93,7 @@ function renderHome() {
       <button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button>
       <label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label>
     </div>
-    <button class="help-link" data-action="help">使い方・データ保存について</button>
+    <button class="help-link" data-action="help">上の3個のボタンの説明</button>
   `;
 
   app.querySelector('[data-action="history"]').onclick = () => navigate('history');
@@ -164,7 +164,7 @@ function renderDetail(index) {
     </div>
     <div class="bottom-actions">
       <button class="button secondary" data-action="back">記録一覧へ戻る</button>
-      <button class="button ghost danger" data-action="delete">この記録を削除</button>
+      <button class="button ghost danger" data-action="delete">この記録を削除する</button>
       <div id="delete-confirmation" class="delete-confirmation hidden" role="alert">
         <p>この記録を削除しますか？<br><strong>削除後は元に戻せません。</strong></p>
         <button class="button danger-solid" data-action="confirm-delete">削除して一覧へ戻る</button>
