@@ -106,7 +106,7 @@ function getDecodeWorker() {
   if (scannerState.worker) return scannerState.worker;
 
   try {
-    const worker = new Worker('./qrWorker.js?v=11');
+    const worker = new Worker('./qrWorker.js?v=12');
     worker.onmessage = event => {
       const { requestId, type, result, error } = event.data || {};
       const pending = scannerState.pendingRequests.get(requestId);

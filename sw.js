@@ -1,16 +1,16 @@
 'use strict';
 
-const CACHE_NAME = 'medicine-notebook-v11';
+const CACHE_NAME = 'medicine-notebook-v12';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=11',
-  './app.js?v=11',
-  './audio.js?v=11',
-  './camera.js?v=11',
-  './parser.js?v=11',
-  './storage.js?v=11',
-  './qrWorker.js?v=11',
+  './style.css?v=12',
+  './app.js?v=12',
+  './audio.js?v=12',
+  './camera.js?v=12',
+  './parser.js?v=12',
+  './storage.js?v=12',
+  './qrWorker.js?v=12',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',

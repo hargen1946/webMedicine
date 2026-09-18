@@ -8,6 +8,7 @@ const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const camera = fs.readFileSync(path.join(root, 'camera.js'), 'utf8');
+const style = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 
 assert.match(html, /id=["']toast["']/i, '通知欄がindex.htmlに必要です');
@@ -26,6 +27,9 @@ assert.doesNotMatch(app, /data-action="help">使い方・データ保存につ�
 assert.match(camera, /前の処方箋を保存しました。/, '前の処方箋を保存した案内が必要です');
 assert.match(camera, /別の処方箋の1件目を読み取りました。/, '別の処方箋の1件目を読み取った案内が必要です');
 assert.doesNotMatch(camera, /新しい処方箋：/, '別の処方箋という統一表記を使います');
+assert.match(style, /\.button-stack\.home-actions[\s\S]*margin-bottom:\s*44px/, 'QR読み取りボタンと3ボタンの間隔を広くします');
+assert.match(style, /\.utility-row[\s\S]*margin-bottom:\s*8px/, '3ボタンと説明文の間隔を近づけます');
+assert.match(style, /\.help-link[\s\S]*margin-top:\s*0/, '説明文側に余分な上余白を設けません');
 
 const assetVersion = serviceWorker.match(/CACHE_NAME = 'medicine-notebook-v(\d+)'/)?.[1];
 assert.ok(assetVersion, 'サービスワーカーのキャッシュ番号が必要です');

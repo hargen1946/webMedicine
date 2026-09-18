@@ -187,7 +187,7 @@ main {
 .utility-row {
   width: 100%;
   max-width: 400px;
-  margin-bottom: 32px;
+  margin-bottom: 8px;
 }
 
 .file-button input[type="file"] {
@@ -510,11 +510,11 @@ video {
   font-weight: bold;
 }
 
-/* 3. 「使い方・データ保存について」のリンク文字を濃い青色にする */
+/* 3. 3つの補助ボタンの説明を近くに配置し、濃い青色にする */
 .help-link {
   color: #1565c0; /* よりコントラストが高く見やすい濃い青色（ロイヤルブルー系） */
   font-size: 16px;
-  margin-top: 6px; /* 3ボタンと説明文の間を少し狭くする */
+  margin-top: 0;
 }
 /* =========================================
    カメラ画面（スキャナー）のUI改善追加コード
