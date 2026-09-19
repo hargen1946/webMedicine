@@ -12,6 +12,10 @@ const style = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 
 assert.match(html, /id=["']toast["']/i, '通知欄がindex.htmlに必要です');
+assert.match(html, /http-equiv="Content-Security-Policy"/i, '外部通信を制限するCSPが必要です');
+assert.match(html, /script-src 'self' 'wasm-unsafe-eval'/, '自サイトのスクリプトとQR解析用WASMだけを許可します');
+assert.match(html, /connect-src 'self'/, '外部サーバーへの通信を禁止します');
+assert.match(app, /個人情報についての大切な注意/, '保存ファイルに含まれる個人情報の注意が必要です');
 assert.match(app, /if \(!toast\) return;/, '通知欄がなくても主要処理を止めない必要があります');
 assert.doesNotMatch(app, /navigate\('history'\);\s*flash\('記録を削除しました'\);/, '削除後の通知を二重表示しません');
 assert.match(
