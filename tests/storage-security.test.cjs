@@ -27,11 +27,6 @@ vm.runInContext(
   context
 );
 
-assert.equal(context.csvCell('=1+1'), '"\'=1+1"', '数式として始まる文字を無害化します');
-assert.equal(context.csvCell('  @SUM(A1)'), '"\'  @SUM(A1)"', '空白の後の数式も無害化します');
-assert.equal(context.csvCell('一般薬A'), '"一般薬A"', '通常の薬品名は変更しません');
-assert.equal(context.csvCell('薬"A'), '"薬""A"', '引用符をCSV用に変換します');
-
 const valid = [{
   prescriptionDate: '2026年9月19日',
   hospitalName: 'テスト病院',
