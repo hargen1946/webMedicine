@@ -100,7 +100,7 @@ function renderHome() {
   app.querySelector('[data-action="scan"]').onclick = openScanner;
   app.querySelector('[data-action="finish"]')?.addEventListener('click', finishReading);
   app.querySelector('[data-action="export"]').onclick = exportCsv;
-  app.querySelector('[data-action="backup"]').onclick = () => download(JSON.stringify(getRecords(), null, 2), 'お薬手帳バックアップ.json', 'application/json');
+  app.querySelector('[data-action="backup"]').onclick = exportBackup;
   app.querySelector('#json-import').onchange = importJson;
   app.querySelector('[data-action="help"]').onclick = () => navigate('help');
 }
@@ -114,6 +114,7 @@ function renderHelp() {
       <section><h2>データ出力とは</h2><p>お薬の記録はその度に自動で記録されますので普通は必要ありません。機種変更や故障に備えて（お薬手帳バックアップ.json）ファイルとしてスマホのファイルアプリのダウンロードに保存されます。</p></section>
       <section><h2>データ復元とは</h2><p>古いスマホからデータを移動した新しいスマホの（お薬手帳バックアップ.json）を選び、新しいスマホに記録を戻します。</p></section>
       <section><h2>記録の保存場所</h2><p>記録はサーバーへ送信されず、このスマホのブラウザ内だけに自動保存されます。</p></section>
+      <section><h2>個人情報についての大切な注意</h2><p>CSVとバックアップのファイルには、お薬、医療機関、医師名などの個人情報が含まれます。ファイルは暗号化されず、スマホのダウンロードに保存されます。他人と共有せず、メールに添付する場合は宛先をよく確認し、不要になったファイルは削除してください。このアプリの記録はアプリ独自の暗号化をしていないため、スマホには画面ロックを設定してください。</p></section>
     </div>
     <div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>
   `;
