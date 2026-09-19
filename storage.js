@@ -116,33 +116,6 @@ function saveRecord(record) {
   return true;
 }
 
-function safeCsvValue(value) {
-  const text = String(value ?? '');
-  return /^[\s\uFEFF]*[=+\-@＝＋－＠]/u.test(text) ? `'${text}` : text;
-}
-
-function csvCell(v) {
-  return '"' + safeCsvValue(v).replaceAll('"', '""') + '"';
-}
-
-function exportCsv() {
-  const records = getRecords();
-  if (!records.length) {
-    flash('出力する記録がありません');
-    return;
-  }
-  if (!confirm('CSVファイルには、お薬・医療機関・医師名などの個人情報が含まれます。安全な場所に保存し、他人へ送らないでください。\n\nCSVファイルを保存しますか？')) return;
-  const rows = [['処方日', '医療機関', '診療科', '医師名', '薬品名', '用法', '数量']];
-  for (const r of records) {
-    for (const m of r.medicines) {
-      rows.push([r.prescriptionDate, r.hospitalName, r.department, r.doctorName, m.name, m.usage.join(' / '), m.quantityInfo]);
-    }
-  }
-  const csvContent = '\ufeff' + rows.map(row => row.map(csvCell).join(',')).join('\r\n');
-  download(csvContent, 'お薬手帳.csv', 'text/csv;charset=utf-8');
-  flash('「お薬手帳.csv」をダウンロードしました。');
-}
-
 function exportBackup() {
   const records = getRecords();
   if (!records.length) {

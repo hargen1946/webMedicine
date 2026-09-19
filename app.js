@@ -89,17 +89,15 @@ function renderHome() {
     </div>
     ${state.notice ? `<div class="notice">${esc(state.notice)}</div>` : ''}
     <div class="utility-row" style="display: flex; gap: 8px; justify-content: space-between;">
-      <button class="button ghost" data-action="export" style="flex: 1; padding: 12px 0; font-size: 15px;">CSV保存</button>
       <button class="button ghost" data-action="backup" style="flex: 1; padding: 12px 0; font-size: 15px;">データ出力</button>
       <label class="button ghost file-button" style="flex: 1; padding: 12px 0; font-size: 15px; text-align: center; margin: 0;">データ復元<input id="json-import" type="file" accept="application/json"></label>
     </div>
-    <button class="help-link" data-action="help">上の3個のボタンの説明</button>
+    <button class="help-link" data-action="help">上の2個のボタンの説明</button>
   `;
 
   app.querySelector('[data-action="history"]').onclick = () => navigate('history');
   app.querySelector('[data-action="scan"]').onclick = openScanner;
   app.querySelector('[data-action="finish"]')?.addEventListener('click', finishReading);
-  app.querySelector('[data-action="export"]').onclick = exportCsv;
   app.querySelector('[data-action="backup"]').onclick = exportBackup;
   app.querySelector('#json-import').onchange = importJson;
   app.querySelector('[data-action="help"]').onclick = () => navigate('help');
@@ -110,11 +108,10 @@ function renderHelp() {
   app.innerHTML = `
     <h1 class="page-title">使い方・データ保存について</h1>
     <div class="help-sections">
-      <section><h2>CSV保存とは</h2><p>年に一度くらいお薬の記録を、パソコンに保存したりエクセル等で一覧表として見たい場合に使います。その為の（お薬手帳.csv）ファイルとしてスマートフォン本体にダウンロード保存します。スマホのファイルアプリのダウンロードに保存されます。そのファイルをメール等に添付して、ご自身のパソコン宛てに送信してください。</p></section>
       <section><h2>データ出力とは</h2><p>お薬の記録はその度に自動で記録されますので普通は必要ありません。機種変更や故障に備えて（お薬手帳バックアップ.json）ファイルとしてスマホのファイルアプリのダウンロードに保存されます。</p></section>
       <section><h2>データ復元とは</h2><p>古いスマホからデータを移動した新しいスマホの（お薬手帳バックアップ.json）を選び、新しいスマホに記録を戻します。</p></section>
       <section><h2>記録の保存場所</h2><p>記録はサーバーへ送信されず、このスマホのブラウザ内だけに自動保存されます。</p></section>
-      <section><h2>個人情報についての大切な注意</h2><p>CSVとバックアップのファイルには、お薬、医療機関、医師名などの個人情報が含まれます。ファイルは暗号化されず、スマホのダウンロードに保存されます。他人と共有せず、メールに添付する場合は宛先をよく確認し、不要になったファイルは削除してください。このアプリの記録はアプリ独自の暗号化をしていないため、スマホには画面ロックを設定してください。</p></section>
+      <section><h2>記録を安全に保つために</h2><p>記録はスマホ本体のセキュリティ機能で保護されたブラウザ内に保存されます。より安全に使うため、スマホには画面ロックを設定してください。データ出力で作成するバックアップファイルには、お薬や医療機関などの記録が含まれます。機種変更などに使用するまで安全な場所に保管し、不要になったファイルは削除してください。</p></section>
     </div>
     <div class="bottom-actions"><button class="button secondary" data-action="home">ホームへ戻る</button></div>
   `;
