@@ -221,7 +221,11 @@ document.querySelector('#scanner-next').onclick = async () => {
 document.querySelector('#scanner-finish').onclick = finishReading;
 document.querySelector('#scanner-back').onclick = closeScanner;
 document.querySelector('#close-scanner').onclick = closeScanner;
-document.querySelector('#scanner-file').onclick = () => {
+document.querySelector('#scanner-file').onclick = async event => {
+  if (event.currentTarget.dataset.action === 'home') {
+    await returnHomeFromScanner();
+    return;
+  }
   document.querySelector('#qr-image-input').click();
 };
 document.querySelector('#qr-image-input').onchange = async event => {
