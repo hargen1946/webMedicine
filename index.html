@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>お薬手帳</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=14">
+  <link rel="stylesheet" href="./style.css?v=15">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <meta name="theme-color" content="#6750a4">
 </head>
@@ -37,7 +37,7 @@
       <div id="scan-guide" class="scan-guide"></div>
     </div>
     <div id="scanner-tools" class="scanner-tools">
-      <button id="scanner-file" class="button secondary" type="button">QR画像から読み取る</button>
+      <button id="scanner-file" class="button secondary" type="button" data-action="image">QR画像から読み取る</button>
       <input id="qr-image-input" class="hidden" type="file" accept="image/*">
       <p class="scanner-tip">枠いっぱいにせず、QRコードの周囲に少し余白が見える距離で静止してください。</p>
     </div>
@@ -65,10 +65,10 @@
   <script src="./vendor/zxing-wasm/index.js"></script>
 
   <!-- 分割した機能モジュール（依存関係順に確実に同期実行） -->
-  <script src="./audio.js?v=14"></script>
-  <script src="./storage.js?v=14"></script>
-  <script src="./parser.js?v=14"></script>
-  <script src="./camera.js?v=14"></script>
-  <script src="./app.js?v=14"></script>
+  <script src="./audio.js?v=15"></script>
+  <script src="./storage.js?v=15"></script>
+  <script src="./parser.js?v=15"></script>
+  <script src="./camera.js?v=15"></script>
+  <script src="./app.js?v=15"></script>
 </body>
 </html>
