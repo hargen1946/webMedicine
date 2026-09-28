@@ -1,6 +1,7 @@
 'use strict';
 
-const SCAN_TIMEOUT_MS = 30000;
+const SCAN_TIMEOUT_MS = 5000;
+const SCAN_RETURN_DELAY_MS = 2000;
 const SCAN_INTERVAL_MS = 180;
 const MAX_CAMERA_FRAME_EDGE = 1800;
 const MAX_IMAGE_EDGE = 2600;
@@ -29,6 +30,7 @@ const scannerState = {
   scanning: false,
   isProcessing: false,
   scanTimer: null,
+  returnTimer: null,
   loopTimer: null,
   offscreenCanvas: null,
   offscreenCtx: null,
@@ -106,7 +108,7 @@ function getDecodeWorker() {
   if (scannerState.worker) return scannerState.worker;
 
   try {
-    const worker = new Worker('./qrWorker.js?v=14');
+    const worker = new Worker('./qrWorker.js?v=15');
     worker.onmessage = event => {
       const { requestId, type, result, error } = event.data || {};
       const pending = scannerState.pendingRequests.get(requestId);
@@ -296,6 +298,26 @@ function setScannerToolsVisible(visible) {
   document.querySelector('#scanner-tools')?.classList.toggle('hidden', !visible);
 }
 
+function setScannerCloseVisible(visible) {
+  document.querySelector('#close-scanner')?.classList.toggle('hidden', !visible);
+}
+
+function setScannerFileAction(action = 'image') {
+  const button = document.querySelector('#scanner-file');
+  if (!button) return;
+  button.dataset.action = action;
+  button.textContent = action === 'home' ? 'ホームへ戻る' : 'QR画像から読み取る';
+}
+
+function setScannerNextLabel(isPrescriptionRetry = false) {
+  const button = document.querySelector('#scanner-next');
+  if (button) {
+    button.textContent = isPrescriptionRetry
+      ? '処方箋QRコードを読み取る'
+      : '次のQRコードを読む';
+  }
+}
+
 async function acceptQr(scanResult) {
   await stopCamera();
 
@@ -344,6 +366,9 @@ async function acceptQr(scanResult) {
   } else {
     statusEl.style.color = '#c62828';
     statusEl.textContent = '処方箋のQRデータとして認識できませんでした。';
+    setScannerCloseVisible(false);
+    setScannerFileAction('home');
+    setScannerNextLabel(true);
     setScannerToolsVisible(true);
     const progress = scanProgress();
     showScanChoice(progress.canContinue, progress.canFinish);
@@ -357,6 +382,9 @@ async function openScanner() {
 
   if (dialogEl && !dialogEl.open) dialogEl.showModal();
   hideScanChoice();
+  setScannerCloseVisible(true);
+  setScannerFileAction('image');
+  setScannerNextLabel(false);
   if (typeof initAudio === 'function') initAudio();
   if (cameraFrame) cameraFrame.style.display = 'block';
   setScannerToolsVisible(true);
@@ -384,6 +412,10 @@ async function applyCameraCapabilities(track) {
 
 async function startCamera() {
   await stopCamera();
+
+  setScannerCloseVisible(true);
+  setScannerFileAction('image');
+  setScannerNextLabel(false);
 
   const videoEl = document.querySelector('#camera-video');
   const statusEl = document.querySelector('#scanner-status');
@@ -498,18 +530,40 @@ function scheduleDecodeLoop(videoEl, generation) {
 function clearScanTimers() {
   clearTimeout(scannerState.scanTimer);
   clearTimeout(scannerState.loopTimer);
+  clearTimeout(scannerState.returnTimer);
   scannerState.scanTimer = null;
   scannerState.loopTimer = null;
+  scannerState.returnTimer = null;
 }
 
-function handleScanTimeout() {
+async function handleScanTimeout() {
   scannerState.scanTimer = null;
   if (!scannerState.scanning) return;
+
+  await stopCamera();
   const statusEl = document.querySelector('#scanner-status');
-  if (statusEl) {
-    statusEl.style.color = '#8a4b08';
-    statusEl.textContent = 'まだ読み取れていません。少し離して静止するか、QR画像から読み取ってください。';
+  const cameraFrame = document.querySelector('.camera-frame');
+  if (cameraFrame) cameraFrame.style.display = 'none';
+  setScannerToolsVisible(false);
+  setScannerCloseVisible(false);
+
+  // すでに一部を読み取っている場合は内容を失わず、再試行または保存を選べるようにする。
+  if (state.qrList.length) {
+    if (statusEl) {
+      statusEl.style.color = '#c62828';
+      statusEl.textContent = '次のQRコードを読み取れませんでした。もう一度お試しください。';
+    }
+    const progress = scanProgress();
+    showScanChoice(progress.canContinue, progress.canFinish);
+    return;
   }
+
+  hideScanChoice();
+  if (statusEl) {
+    statusEl.style.color = '#c62828';
+    statusEl.textContent = '読み取れません。ホームに戻ります。';
+  }
+  scannerState.returnTimer = setTimeout(returnHomeFromScanner, SCAN_RETURN_DELAY_MS);
 }
 
 async function stopCamera() {
@@ -533,6 +587,12 @@ async function closeScanner() {
   await stopCamera();
   const dialogEl = document.querySelector('#scanner-dialog');
   if (dialogEl?.open) dialogEl.close();
+}
+
+async function returnHomeFromScanner() {
+  await closeScanner();
+  clearCurrentScan();
+  if (typeof navigate === 'function') navigate('home');
 }
 
 async function scanQrImageFile(file) {
