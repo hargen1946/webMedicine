@@ -31,6 +31,13 @@ assert.doesNotMatch(app, /data-action="help">使い方・データ保存につ�
 assert.match(camera, /前の処方箋を保存しました。/, '前の処方箋を保存した案内が必要です');
 assert.match(camera, /別の処方箋の1件目を読み取りました。/, '別の処方箋の1件目を読み取った案内が必要です');
 assert.doesNotMatch(camera, /新しい処方箋：/, '別の処方箋という統一表記を使います');
+assert.match(camera, /const SCAN_TIMEOUT_MS = 5000;/, '最初のQR読み取りは5秒で終了します');
+assert.match(camera, /const SCAN_RETURN_DELAY_MS = 2000;/, '読取失敗の案内を2秒表示します');
+assert.match(camera, /読み取れません。ホームに戻ります。/, '自動でホームへ戻る案内が必要です');
+assert.match(camera, /処方箋QRコードを読み取る/, '処方箋以外のQRを読んだ後の再試行ボタン名が必要です');
+assert.match(camera, /button\.textContent = action === 'home' \? 'ホームへ戻る'/, '読取失敗後は画像選択ボタンをホームボタンへ変えます');
+assert.match(camera, /setScannerCloseVisible\(false\)/, '読取失敗画面では閉じる印を隠します');
+assert.match(app, /dataset\.action === 'home'[\s\S]*returnHomeFromScanner/, 'ホームボタンで読取画面を終了します');
 assert.match(style, /\.button-stack\.home-actions[\s\S]*margin-bottom:\s*44px/, 'QR読み取りボタンと3ボタンの間隔を広くします');
 assert.match(style, /\.utility-row[\s\S]*margin-bottom:\s*8px/, '3ボタンと説明文の間隔を近づけます');
 assert.match(style, /\.help-link[\s\S]*margin-top:\s*0/, '説明文側に余分な上余白を設けません');
